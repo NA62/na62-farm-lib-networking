@@ -6,7 +6,6 @@
  */
 
 #include "PFringHandler.h"
-
 #include <glog/logging.h>
 
 namespace na62 {
@@ -43,8 +42,8 @@ PFringHandler::PFringHandler(std::string deviceName) {
 		 */
 		pfring_set_poll_watermark(rings[i], 128);
 
-		queueRings_[i] = new ntop::PFring(rings[i], (char*) queDeviceName.data(), snaplen,
-				flags);
+		queueRings_[i] = new ntop::PFring(rings[i],
+				(char*) queDeviceName.data(), snaplen, flags);
 
 		if (queueRings_[i]->enable_ring() >= 0) {
 			LOG(INFO)<< "Successfully opened device "
