@@ -13,6 +13,8 @@
 #include <boost/thread.hpp>
 #include <atomic>
 #include <vector>
+#include <queue>
+#include <mutex>
 #include <utils/ThreadsafeQueue.h>
 #include <utils/Stopwatch.h>
 #include <utils/AExecutable.h>
@@ -41,19 +43,18 @@ public:
 		return deviceName_;
 	}
 
-	static inline int SendFrame(char *pkt, u_int pktLen, bool flush = true,
-	bool activePoll = true) {
-		/*
-		 * Check if an Ethernet trailer is needed
-		 */
-		if (pktLen < 64) {
-			memset(pkt + pktLen, 0, 64 - pktLen);
-			pktLen = 64;
-		}
-		boost::lock_guard<boost::mutex> lock(sendMutex_); // Will lock sendMutex until return
-		return queueRings_[0]->send_packet((char*) pkt, pktLen, flush,
-				activePoll);
-	}
+	/**
+	 * This enqueues frames to be sent later by the PacketHandler threads
+	 */
+	static void AsyncSendFrame(const DataContainer data);
+
+	/**
+	 * Sends one frame out of the queue filled by AsyncSendFrame.
+	 *
+	 * This should only be called by a PacketHandler thread to ensure thread safety.
+	 * TODO: This method blocks with a mutex. We should think about implementing this with ZMQ or something
+	 */
+	static int DoSendQueuedFrames(uint16_t threadNum);
 
 	static inline int SendFrameConcurrently(uint16_t threadNum, char *pkt,
 			u_int pktLen, bool flush = true, bool activePoll = true) {
@@ -128,11 +129,13 @@ public:
 private:
 	static std::atomic<uint64_t> bytesReceived_;
 	static std::atomic<uint64_t> framesReceived_;
-	static boost::mutex sendMutex_;
 	static ntop::PFring ** queueRings_; // one ring per queue
 	static ntop::PFring * mainReceiverRing_; // ring which receives IP packets
 	static uint16_t numberOfQueues_;
 	static std::string deviceName_;
+
+	static std::mutex asyncDataMutex_;
+	static std::queue<DataContainer> asyncData_;
 
 	static pfring_stat GetStats() {
 		pfring_stat stats = { 0 };

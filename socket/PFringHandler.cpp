@@ -15,7 +15,8 @@ uint16_t PFringHandler::numberOfQueues_;
 std::atomic<uint64_t> PFringHandler::bytesReceived_(0);
 std::atomic<uint64_t> PFringHandler::framesReceived_(0);
 std::string PFringHandler::deviceName_ = "";
-boost::mutex PFringHandler::sendMutex_;
+std::mutex PFringHandler::asyncDataMutex_;
+std::queue<DataContainer> PFringHandler::asyncData_;
 
 PFringHandler::PFringHandler(std::string deviceName) {
 	deviceName_ = deviceName;
@@ -69,7 +70,7 @@ void PFringHandler::thread() {
 	 * Periodically send a gratuitous ARP frames
 	 */
 	while (true) {
-		SendFrame(arp.data, arp.length);
+		AsyncSendFrame(arp);
 		boost::this_thread::sleep(boost::posix_time::seconds(60));
 	}
 }
@@ -82,5 +83,23 @@ void PFringHandler::PrintStats() {
 		LOG(INFO)<<i << " \t" << stats.recv << "\t" << stats.drop;
 	}
 }
+
+void PFringHandler::AsyncSendFrame(const DataContainer data) {
+	std::lock_guard<std::mutex> lock(asyncDataMutex_);
+	asyncData_.push(data);
+}
+
+int PFringHandler::DoSendQueuedFrames(uint16_t threadNum) {
+	asyncDataMutex_.lock();
+	if (!asyncData_.empty()) {
+		const DataContainer data = asyncData_.front();
+		asyncData_.pop();
+		asyncDataMutex_.unlock();
+		return SendFrameConcurrently(threadNum, data.data, data.length);
+	}
+	asyncDataMutex_.unlock();
+	return 0;
+}
+
 }
 /* namespace na62 */
