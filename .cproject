@@ -23,7 +23,7 @@
 					<folderInfo id="cdt.managedbuild.config.gnu.lib.debug.1267067609." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.lib.debug.807919659" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.lib.debug">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.lib.debug.588938950" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.lib.debug"/>
-							<builder buildPath="${workspace_loc:/na62-farm-lib-networking}/Debug" id="cdt.managedbuild.target.gnu.builder.lib.debug.269629140" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.lib.debug"/>
+							<builder buildPath="${workspace_loc:/na62-farm-lib-networking}/Debug" id="cdt.managedbuild.target.gnu.builder.lib.debug.269629140" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.target.gnu.builder.lib.debug"/>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.lib.debug.211711503" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.lib.debug"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.lib.debug.29854608" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.lib.debug">
 								<option id="gnu.cpp.compiler.lib.debug.option.optimization.level.556839654" name="Optimization Level" superClass="gnu.cpp.compiler.lib.debug.option.optimization.level" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
@@ -34,7 +34,7 @@
 									<listOptionValue builtIn="false" value="/afs/cern.ch/sw/IntelSoftware/linux/x86_64/xe2013/composer_xe_2013_sp1.2.144/mkl/include"/>
 									<listOptionValue builtIn="false" value="/afs/cern.ch/sw/IntelSoftware/linux/x86_64/xe2013/composer_xe_2013_sp1.2.144/tbb/include"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.other.other.1751383727" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.1751383727" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1257600815" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.lib.debug.1752678864" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.lib.debug">
@@ -95,7 +95,7 @@
 					<folderInfo id="cdt.managedbuild.config.gnu.lib.release.148627624." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.lib.release.487329265" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.lib.release">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.lib.release.791546984" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.lib.release"/>
-							<builder buildPath="${workspace_loc:/na62-farm-lib-networking}/Release" id="cdt.managedbuild.target.gnu.builder.lib.release.881593993" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.lib.release"/>
+							<builder buildPath="${workspace_loc:/na62-farm-lib-networking}/Release" id="cdt.managedbuild.target.gnu.builder.lib.release.881593993" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="cdt.managedbuild.target.gnu.builder.lib.release"/>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.lib.release.1434957680" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.lib.release"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.lib.release.1566997929" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.lib.release">
 								<option id="gnu.cpp.compiler.lib.release.option.optimization.level.2139209495" name="Optimization Level" superClass="gnu.cpp.compiler.lib.release.option.optimization.level" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
@@ -106,7 +106,7 @@
 									<listOptionValue builtIn="false" value="/afs/cern.ch/sw/IntelSoftware/linux/x86_64/xe2013/composer_xe_2013_sp1.2.144/mkl/include"/>
 									<listOptionValue builtIn="false" value="/afs/cern.ch/sw/IntelSoftware/linux/x86_64/xe2013/composer_xe_2013_sp1.2.144/tbb/include"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.other.other.962715802" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.962715802" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1688699581" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.lib.release.502793752" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.lib.release">
@@ -165,5 +165,12 @@
 		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
-	<storageModule moduleId="refreshScope"/>
+	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="Release">
+			<resource resourceType="PROJECT" workspacePath="/na62-farm-lib-networking"/>
+		</configuration>
+		<configuration configurationName="Debug">
+			<resource resourceType="PROJECT" workspacePath="/na62-farm-lib-networking"/>
+		</configuration>
+	</storageModule>
 </cproject>

@@ -44,9 +44,10 @@ public:
 	}
 
 	/**
-	 * This enqueues frames to be sent later by the PacketHandler threads
+	 * This enqueues frames to be sent later by the PacketHandler threads.
+	 * The data field will be deleted as soon as it has been sent
 	 */
-	static void AsyncSendFrame(const DataContainer data);
+	static void AsyncSendFrame(const DataContainer&& data);
 
 	/**
 	 * Sends one frame out of the queue filled by AsyncSendFrame.

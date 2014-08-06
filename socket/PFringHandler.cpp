@@ -70,7 +70,7 @@ void PFringHandler::thread() {
 	 * Periodically send a gratuitous ARP frames
 	 */
 	while (true) {
-		AsyncSendFrame(arp);
+		AsyncSendFrame(std::move(arp));
 		boost::this_thread::sleep(boost::posix_time::seconds(60));
 	}
 }
@@ -84,7 +84,7 @@ void PFringHandler::PrintStats() {
 	}
 }
 
-void PFringHandler::AsyncSendFrame(const DataContainer data) {
+void PFringHandler::AsyncSendFrame(const DataContainer&& data) {
 	std::lock_guard<std::mutex> lock(asyncDataMutex_);
 	asyncData_.push(data);
 }
@@ -95,7 +95,9 @@ int PFringHandler::DoSendQueuedFrames(uint16_t threadNum) {
 		const DataContainer data = asyncData_.front();
 		asyncData_.pop();
 		asyncDataMutex_.unlock();
-		return SendFrameConcurrently(threadNum, data.data, data.length);
+		int bytes = SendFrameConcurrently(threadNum, data.data, data.length);
+		delete[] data.data;
+		return bytes;
 	}
 	asyncDataMutex_.unlock();
 	return 0;
