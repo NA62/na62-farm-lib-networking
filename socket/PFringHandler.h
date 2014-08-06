@@ -14,7 +14,8 @@
 #include <atomic>
 #include <vector>
 #include <queue>
-#include <mutex>
+#include <tbb/spin_mutex.h>
+#include <tbb/mutex.h>
 #include <utils/ThreadsafeQueue.h>
 #include <utils/Stopwatch.h>
 #include <utils/AExecutable.h>
@@ -135,7 +136,7 @@ private:
 	static uint16_t numberOfQueues_;
 	static std::string deviceName_;
 
-	static std::mutex asyncDataMutex_;
+	static tbb::spin_mutex asyncDataMutex_;
 	static std::queue<DataContainer> asyncData_;
 
 	static pfring_stat GetStats() {

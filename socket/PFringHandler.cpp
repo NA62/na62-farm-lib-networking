@@ -15,7 +15,7 @@ uint16_t PFringHandler::numberOfQueues_;
 std::atomic<uint64_t> PFringHandler::bytesReceived_(0);
 std::atomic<uint64_t> PFringHandler::framesReceived_(0);
 std::string PFringHandler::deviceName_ = "";
-std::mutex PFringHandler::asyncDataMutex_;
+tbb::spin_mutex PFringHandler::asyncDataMutex_;
 std::queue<DataContainer> PFringHandler::asyncData_;
 
 PFringHandler::PFringHandler(std::string deviceName) {
@@ -63,13 +63,13 @@ PFringHandler::PFringHandler(std::string deviceName) {
 }
 
 void PFringHandler::thread() {
-
-	struct DataContainer arp = EthernetUtils::GenerateGratuitousARPv4(
-			GetMyMac().data(), GetMyIP());
 	/*
 	 * Periodically send a gratuitous ARP frames
 	 */
 	while (true) {
+		struct DataContainer arp = EthernetUtils::GenerateGratuitousARPv4(
+				GetMyMac().data(), GetMyIP());
+
 		AsyncSendFrame(std::move(arp));
 		boost::this_thread::sleep(boost::posix_time::seconds(60));
 	}
@@ -85,7 +85,7 @@ void PFringHandler::PrintStats() {
 }
 
 void PFringHandler::AsyncSendFrame(const DataContainer&& data) {
-	std::lock_guard<std::mutex> lock(asyncDataMutex_);
+	tbb::spin_mutex::scoped_lock my_lock(asyncDataMutex_);
 	asyncData_.push(data);
 }
 
