@@ -80,7 +80,7 @@ private:
 	static uint64_t L1TriggersSent;
 	static uint64_t L1MRPsSent;
 
-	static std::queue<DataContainer> MRPQueues;
+	static std::queue<DataContainer> MRPQueue;
 
 	static std::mutex sendMutex_;
 

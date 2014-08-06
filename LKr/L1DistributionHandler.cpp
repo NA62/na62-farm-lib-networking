@@ -47,7 +47,7 @@ uint L1DistributionHandler::NUMBER_OF_EBS = 0;
 uint L1DistributionHandler::MAX_TRIGGERS_PER_L1MRP = 0;
 uint L1DistributionHandler::MIN_USEC_BETWEEN_L1_REQUESTS = 0;
 
-std::queue<DataContainer> L1DistributionHandler::MRPQueues;
+std::queue<DataContainer> L1DistributionHandler::MRPQueue;
 std::mutex L1DistributionHandler::sendMutex_;
 
 boost::timer::cpu_timer L1DistributionHandler::MRPSendTimer_;
@@ -201,6 +201,7 @@ void L1DistributionHandler::thread() {
 				 */
 				boost::this_thread::sleep(
 						boost::posix_time::microsec(sleepMicros));
+//				std::this_thread::sleep_for(std::chrono::microseconds (sleepMicros));
 			}
 		}
 	}
@@ -210,15 +211,15 @@ void L1DistributionHandler::thread() {
 
 bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 	if (sendMutex_.try_lock()) {
-		if (!MRPQueues.empty()) {
+		if (!MRPQueue.empty()) {
 			if (MRPSendTimer_.elapsed().wall / 1000
 					> MIN_USEC_BETWEEN_L1_REQUESTS) {
 
-				DataContainer container = MRPQueues.front();
-				MRPQueues.pop();
+				DataContainer container = MRPQueue.front();
+				MRPQueue.pop();
 
 //				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//				Debug printout
+////				Debug printout
 //				struct cream::MRP_FRAME_HDR* hdr =
 //						(struct cream::MRP_FRAME_HDR*) container.data;
 //
@@ -301,7 +302,7 @@ void L1DistributionHandler::Async_SendMRP(
 	memcpy(buff, dataHDRToBeSent, offset);
 
 	std::lock_guard<std::mutex> lock(sendMutex_);
-	MRPQueues.push( { buff, offset });
+	MRPQueue.push( { buff, offset });
 
 	L1TriggersSent += numberOfTriggers;
 	L1MRPsSent++;
