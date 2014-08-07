@@ -19,6 +19,8 @@
 #include <mutex>
 #include <utils/AExecutable.h>
 #include <utils/ThreadsafeQueue.h>
+#include <tbb/spin_mutex.h>
+#include <tbb/mutex.h>
 
 #include "MRP.h"
 #include "../socket/EthernetUtils.h"
@@ -32,10 +34,8 @@ typedef std::pair<struct TRIGGER_RAW_HDR*, std::vector<uint16_t> > unicastTrigge
 class L1DistributionHandler: public AExecutable {
 public:
 
-	static void Async_RequestLKRDataMulticast(const uint16_t threadNum,
-			Event *event, bool zSuppressed);
-	static void Async_RequestLKRDataUnicast(const uint16_t threadNum,
-			const Event *event, bool zSuppressed,
+	static void Async_RequestLKRDataMulticast(Event *event, bool zSuppressed);
+	static void Async_RequestLKRDataUnicast(const Event *event, bool zSuppressed,
 			const std::vector<uint16_t> crateCREAMIDs);
 
 	static inline uint64_t GetL1TriggersSent() {
@@ -44,24 +44,6 @@ public:
 
 	static inline uint64_t GetL1MRPsSent() {
 		return L1DistributionHandler::L1MRPsSent;
-	}
-
-	/*
-	 * Allows an EB to stop the MRP transmission
-	 */
-	static inline void PauseSending() {
-		paused = true;
-	}
-
-	/*
-	 * Allows an EB to restart the MRP transmission
-	 */
-	static inline void ResumeSending() {
-		paused = false;
-	}
-
-	static inline bool SendingIsPaused() {
-		return paused;
 	}
 
 	/*
@@ -84,7 +66,12 @@ private:
 	static void Async_SendMRP(const struct cream::MRP_FRAME_HDR* dataHDR,
 			std::vector<struct TRIGGER_RAW_HDR*>& triggers);
 
-	static ThreadsafeQueue<struct TRIGGER_RAW_HDR*>* multicastMRPQueues;
+	/*
+	 * Queues all mutlicast MRPs that should be sent. The aggregator is used to synchronize the access on that object
+	 */
+	static std::priority_queue < struct TRIGGER_RAW_HDR*, std::vector < struct TRIGGER_RAW_HDR* > > multicastMRPQueue;
+	static tbb::spin_mutex multicastMRPQueue_mutex; // TODO: use tbb::aggregator instead of mutex
+
 	static ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* unicastMRPWithIPsQueues;
 
 	static struct cream::MRP_FRAME_HDR* CREAM_MulticastRequestHdr;
@@ -93,9 +80,7 @@ private:
 	static uint64_t L1TriggersSent;
 	static uint64_t L1MRPsSent;
 
-	static bool paused;
-
-	static std::queue<DataContainer> MRPQueues;
+	static std::queue<DataContainer> MRPQueue;
 
 	static std::mutex sendMutex_;
 

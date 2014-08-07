@@ -26,8 +26,7 @@
 
 namespace na62 {
 
-class PFringHandler;
-// forward declaration
+class NetworkHandler;
 
 struct DataContainer {
 	char * data;
@@ -47,7 +46,7 @@ public:
 	 * Returns the 6 byte long hardware address of the interface with the given name.
 	 *
 	 * Note: This also works with interfaces running with a pf_ring driver like "dna:ethX". So you
-	 * cann call EthernetUtils::GetMacOfInterface(PFringHandler::getDeviceName()); as implemented in PFringHandler.cpp
+	 * cann call EthernetUtils::GetMacOfInterface(NetworkHandler::getDeviceName()); as implemented in NetworkHandler.cpp
 	 */
 	static std::vector<char> GetMacOfInterface(std::string iface);
 

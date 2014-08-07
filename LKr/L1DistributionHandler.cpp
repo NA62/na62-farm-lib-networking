@@ -10,9 +10,9 @@
 #include <arpa/inet.h>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/date_time/time_duration.hpp>
-#include <boost/thread/lock_guard.hpp>
-#include <boost/thread/pthread/mutex.hpp>
 #include <boost/thread/pthread/thread_data.hpp>
+#include <eventBuilding/Event.h>
+#include <eventBuilding/SourceIDManager.h>
 #include <glog/logging.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -25,16 +25,17 @@
 #include <new>
 #include <string>
 #include <vector>
+#include <queue>
 
-#include <eventBuilding/Event.h>
-#include <eventBuilding/SourceIDManager.h>
-#include <options/Options.h>
-#include "../socket/PFringHandler.h"
+#include "../socket/NetworkHandler.h"
 #include "../structs/Network.h"
 
 namespace na62 {
 namespace cream {
-ThreadsafeQueue<struct TRIGGER_RAW_HDR*>* L1DistributionHandler::multicastMRPQueues;
+std::priority_queue<struct TRIGGER_RAW_HDR*,
+		std::vector<struct TRIGGER_RAW_HDR*> > L1DistributionHandler::multicastMRPQueue;
+tbb::spin_mutex L1DistributionHandler::multicastMRPQueue_mutex;
+
 ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* L1DistributionHandler::unicastMRPWithIPsQueues;
 
 struct cream::MRP_FRAME_HDR* L1DistributionHandler::CREAM_MulticastRequestHdr;
@@ -46,9 +47,7 @@ uint L1DistributionHandler::NUMBER_OF_EBS = 0;
 uint L1DistributionHandler::MAX_TRIGGERS_PER_L1MRP = 0;
 uint L1DistributionHandler::MIN_USEC_BETWEEN_L1_REQUESTS = 0;
 
-bool L1DistributionHandler::paused = false;
-
-std::queue<DataContainer> L1DistributionHandler::MRPQueues;
+std::queue<DataContainer> L1DistributionHandler::MRPQueue;
 std::mutex L1DistributionHandler::sendMutex_;
 
 boost::timer::cpu_timer L1DistributionHandler::MRPSendTimer_;
@@ -73,26 +72,24 @@ bool zSuppressed) {
 	return triggerHDR;
 }
 
-void L1DistributionHandler::Async_RequestLKRDataMulticast(
-		const uint16_t threadNum, Event * event, bool zSuppressed) {
+void L1DistributionHandler::Async_RequestLKRDataMulticast(Event * event,
+bool zSuppressed) {
 	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
 			zSuppressed);
-	while (!multicastMRPQueues[threadNum].push(triggerHDR)) {
-		LOG(ERROR)<< "L1DistributionHandler input queue overrun!";
-		usleep(1000);
-	}
+
+	tbb::spin_mutex::scoped_lock my_lock(multicastMRPQueue_mutex);
+	multicastMRPQueue.push(triggerHDR);
 }
 
-void L1DistributionHandler::Async_RequestLKRDataUnicast(
-		const uint16_t threadNum, const Event *event, bool zSuppressed,
-		const std::vector<uint16_t> crateCREAMIDs) {
-	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
-			zSuppressed);
-	auto pair = std::make_pair(triggerHDR, crateCREAMIDs);
-	while (!unicastMRPWithIPsQueues[threadNum].push(pair)) {
-		LOG(ERROR)<<"L1DistributionHandler input queue overrun!";
-		usleep(1000);
-	}
+void L1DistributionHandler::Async_RequestLKRDataUnicast(const Event *event,
+bool zSuppressed, const std::vector<uint16_t> crateCREAMIDs) {
+//	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
+//			zSuppressed);
+//	auto pair = std::make_pair(triggerHDR, crateCREAMIDs);
+//	while (!unicastMRPWithIPsQueues[threadNum].push(pair)) {
+//		LOG(ERROR)<<"L1DistributionHandler input queue overrun!";
+//		usleep(1000);
+//	}
 }
 
 void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
@@ -102,16 +99,7 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 	NUMBER_OF_EBS = numberOfEBs;
 	MIN_USEC_BETWEEN_L1_REQUESTS = minUsecBetweenL1Requests;
 
-	void* rawData = operator new[](
-			numberOfEBs * sizeof(ThreadsafeQueue<struct TRIGGER_RAW_HDR*> ));
-	multicastMRPQueues =
-			static_cast<ThreadsafeQueue<struct TRIGGER_RAW_HDR*>*>(rawData);
-
-	for (int i = numberOfEBs - 1; i != -1; i--) {
-		new (&multicastMRPQueues[i]) ThreadsafeQueue<struct TRIGGER_RAW_HDR*>(
-				100000);
-	}
-	rawData =
+	void* rawData =
 			operator new[](
 					numberOfEBs
 							* sizeof(ThreadsafeQueue<
@@ -131,6 +119,7 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 	EthernetUtils::GenerateUDP((char*) CREAM_MulticastRequestHdr,
 			EthernetUtils::GenerateMulticastMac(multicastGroup), multicastGroup,
 			sourcePort, destinationPort);
+
 	/*
 	 * TODO: The router MAC has to be set here:
 	 */
@@ -138,26 +127,16 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 			EthernetUtils::StringToMAC("00:11:22:33:44:55"),
 			0/*Will be set later*/, sourcePort, destinationPort);
 
-	CREAM_MulticastRequestHdr->MRP_HDR.ipAddress = PFringHandler::GetMyIP();
+	CREAM_MulticastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 	CREAM_MulticastRequestHdr->MRP_HDR.reserved = 0;
 
-	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = PFringHandler::GetMyIP();
+	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 	CREAM_UnicastRequestHdr->MRP_HDR.reserved = 0;
 
 //	EthernetUtils::GenerateUDP(CREAM_RequestBuff, EthernetUtils::StringToMAC("00:15:17:b2:26:fa"), "10.0.4.3", sPort, dPort);
 }
 
 void L1DistributionHandler::thread() {
-	/*
-	 * Round robin counter
-	 */
-	int threadNum = 0;
-
-	/*
-	 * Counts how often threadNum run around. After each time we should send even if we did not collect MAX_TRIGGERS_PER_L1MRP yet
-	 */
-	uint EBIterations = 0;
-
 	/*
 	 * We need all MRPs for each CREAM  but the multicastMRPQueues stores it in the opposite order (one MRP, several CREAMs).
 	 * Therefore we will fill the following map and later  produce unicast IP packets with it
@@ -169,27 +148,17 @@ void L1DistributionHandler::thread() {
 	const unsigned int sleepMicros = MIN_USEC_BETWEEN_L1_REQUESTS;
 
 	while (true) {
-		ThreadsafeQueue<struct TRIGGER_RAW_HDR*>* queue =
-				&multicastMRPQueues[threadNum % NUMBER_OF_EBS];
-
-		while (multicastRequests.size() < MAX_TRIGGERS_PER_L1MRP) {
-			struct TRIGGER_RAW_HDR* hdr;
-			if (queue->pop(hdr)) {
-				multicastRequests.push_back(hdr);
-			} else {
-				if (++EBIterations == NUMBER_OF_EBS) {
-					/*
-					 * Now we should send the MRP although we didn't summon MAX_TRIGGERS_PER_L1MRP as all queues seem to be empty
-					 */
-					EBIterations = 0;
-					break;
-				}
-				/*
-				 * Check the next queue
-				 */
-				queue = &multicastMRPQueues[++threadNum % NUMBER_OF_EBS];
-			}
+		/*
+		 * pop some elements from the queue
+		 */
+		multicastMRPQueue_mutex.lock();
+		while (multicastRequests.size() < MAX_TRIGGERS_PER_L1MRP
+				&& !multicastMRPQueue.empty()) {
+			struct TRIGGER_RAW_HDR* hdr = multicastMRPQueue.top();
+			multicastMRPQueue.pop();
+			multicastRequests.push_back(hdr);
 		}
+		multicastMRPQueue_mutex.unlock();
 
 		/*
 		 * Now send all unicast requests
@@ -232,6 +201,7 @@ void L1DistributionHandler::thread() {
 				 */
 				boost::this_thread::sleep(
 						boost::posix_time::microsec(sleepMicros));
+//				std::this_thread::sleep_for(std::chrono::microseconds (sleepMicros));
 			}
 		}
 	}
@@ -241,15 +211,15 @@ void L1DistributionHandler::thread() {
 
 bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 	if (sendMutex_.try_lock()) {
-		if (!MRPQueues.empty()) {
+		if (!MRPQueue.empty()) {
 			if (MRPSendTimer_.elapsed().wall / 1000
 					> MIN_USEC_BETWEEN_L1_REQUESTS) {
 
-				DataContainer container = MRPQueues.front();
-				MRPQueues.pop();
+				DataContainer container = MRPQueue.front();
+				MRPQueue.pop();
 
 //				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//				Debug printout
+////				Debug printout
 //				struct cream::MRP_FRAME_HDR* hdr =
 //						(struct cream::MRP_FRAME_HDR*) container.data;
 //
@@ -271,10 +241,14 @@ bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 //				std::cout << msg.str();
 //				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-				PFringHandler::SendFrameConcurrently(threadNum, container.data,
-						container.length);
+				NetworkHandler::SendFrameConcurrently(threadNum,
+						(const u_char*) container.data, container.length);
 
 				MRPSendTimer_.start();
+
+				L1TriggersSent +=
+						((cream::MRP_FRAME_HDR*) container.data)->MRP_HDR.numberOfTriggers;
+				L1MRPsSent++;
 
 				sendMutex_.unlock();
 				return true;
@@ -286,7 +260,8 @@ bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 }
 
 /**
- * This method uses the given dataHDR and fills it with the given triggers. Then this buffer will be queued to be sent
+ * This method uses the given dataHDR and fills it with the given triggers. Then this buffer
+ * will be queued to be sent by the PacketHandlers
  */
 void L1DistributionHandler::Async_SendMRP(
 		const struct cream::MRP_FRAME_HDR* dataHDR,
@@ -331,11 +306,7 @@ void L1DistributionHandler::Async_SendMRP(
 	memcpy(buff, dataHDRToBeSent, offset);
 
 	std::lock_guard<std::mutex> lock(sendMutex_);
-	MRPQueues.push( { buff, offset });
-
-	L1TriggersSent += numberOfTriggers;
-	L1MRPsSent++;
-
+	MRPQueue.push( { buff, offset });
 }
 }
 /* namespace cream */
