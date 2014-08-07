@@ -96,7 +96,7 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 	 */
 	int n = 1024 * 512; //experiment with it
 	if (setsockopt(socket_, SOL_SOCKET, SO_RCVBUF, &n, sizeof(n)) == -1) {
-	  //oops... check this
+		perror("SO_RCVBUF");
 	}
 
 	struct ifreq if_idx;
