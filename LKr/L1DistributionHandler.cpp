@@ -27,7 +27,11 @@
 #include <vector>
 #include <queue>
 
+<<<<<<< HEAD
 #include "../socket/NetworkHandler.h"
+=======
+#include "../socket/PCapHandler.h"
+>>>>>>> cfe7fda1a2735a61cdfa994d49f4aa35fa7f7e4a
 #include "../structs/Network.h"
 
 namespace na62 {
@@ -127,10 +131,17 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 			EthernetUtils::StringToMAC("00:11:22:33:44:55"),
 			0/*Will be set later*/, sourcePort, destinationPort);
 
+<<<<<<< HEAD
 	CREAM_MulticastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 	CREAM_MulticastRequestHdr->MRP_HDR.reserved = 0;
 
 	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
+=======
+	CREAM_MulticastRequestHdr->MRP_HDR.ipAddress = PCapHandler::GetMyIP();
+	CREAM_MulticastRequestHdr->MRP_HDR.reserved = 0;
+
+	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = PCapHandler::GetMyIP();
+>>>>>>> cfe7fda1a2735a61cdfa994d49f4aa35fa7f7e4a
 	CREAM_UnicastRequestHdr->MRP_HDR.reserved = 0;
 
 //	EthernetUtils::GenerateUDP(CREAM_RequestBuff, EthernetUtils::StringToMAC("00:15:17:b2:26:fa"), "10.0.4.3", sPort, dPort);
@@ -241,7 +252,11 @@ bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 //				std::cout << msg.str();
 //				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
 				NetworkHandler::SendFrameConcurrently(threadNum,
+=======
+				PCapHandler::SendFrameConcurrently(threadNum,
+>>>>>>> cfe7fda1a2735a61cdfa994d49f4aa35fa7f7e4a
 						(const u_char*) container.data, container.length);
 
 				MRPSendTimer_.start();
