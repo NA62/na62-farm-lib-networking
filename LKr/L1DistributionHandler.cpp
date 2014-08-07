@@ -27,7 +27,7 @@
 #include <vector>
 #include <queue>
 
-#include "../socket/PFringHandler.h"
+#include "../socket/PCapHandler.h"
 #include "../structs/Network.h"
 
 namespace na62 {
@@ -82,7 +82,7 @@ bool zSuppressed) {
 }
 
 void L1DistributionHandler::Async_RequestLKRDataUnicast(const Event *event,
-		bool zSuppressed, const std::vector<uint16_t> crateCREAMIDs) {
+bool zSuppressed, const std::vector<uint16_t> crateCREAMIDs) {
 //	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
 //			zSuppressed);
 //	auto pair = std::make_pair(triggerHDR, crateCREAMIDs);
@@ -127,10 +127,10 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 			EthernetUtils::StringToMAC("00:11:22:33:44:55"),
 			0/*Will be set later*/, sourcePort, destinationPort);
 
-	CREAM_MulticastRequestHdr->MRP_HDR.ipAddress = PFringHandler::GetMyIP();
+	CREAM_MulticastRequestHdr->MRP_HDR.ipAddress = PCapHandler::GetMyIP();
 	CREAM_MulticastRequestHdr->MRP_HDR.reserved = 0;
 
-	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = PFringHandler::GetMyIP();
+	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = PCapHandler::GetMyIP();
 	CREAM_UnicastRequestHdr->MRP_HDR.reserved = 0;
 
 //	EthernetUtils::GenerateUDP(CREAM_RequestBuff, EthernetUtils::StringToMAC("00:15:17:b2:26:fa"), "10.0.4.3", sPort, dPort);
@@ -241,12 +241,13 @@ bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 //				std::cout << msg.str();
 //				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-				PFringHandler::SendFrameConcurrently(threadNum, container.data,
-						container.length);
+				PCapHandler::SendFrameConcurrently(threadNum,
+						(const u_char*) container.data, container.length);
 
 				MRPSendTimer_.start();
 
-				L1TriggersSent += ((cream::MRP_FRAME_HDR*)container.data)->MRP_HDR.numberOfTriggers;
+				L1TriggersSent +=
+						((cream::MRP_FRAME_HDR*) container.data)->MRP_HDR.numberOfTriggers;
 				L1MRPsSent++;
 
 				sendMutex_.unlock();

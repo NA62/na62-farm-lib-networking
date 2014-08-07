@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <cstdio>
 
-#include "PFringHandler.h" // forward declaration
+#include "PCapHandler.h" // forward declaration
 
 namespace na62 {
 
@@ -101,7 +101,7 @@ UDP_HDR* EthernetUtils::GenerateUDP(const void* buffer, const char* dMacAddr, co
 	hdr->ip.protocol = IPPROTO_UDP;
 
 	memcpy(hdr->eth.ether_dhost, dMacAddr, ETH_ALEN);
-	memcpy(hdr->eth.ether_shost, PFringHandler::GetMyMac().data(), ETH_ALEN);
+	memcpy(hdr->eth.ether_shost, PCapHandler::GetMyMac().data(), ETH_ALEN);
 
 	hdr->ip.version = 4; // IP version
 	hdr->ip.ihl = 5; // Internet Header Length = ihl*4B (5 = 20B is standard without additional options)
@@ -109,7 +109,7 @@ UDP_HDR* EthernetUtils::GenerateUDP(const void* buffer, const char* dMacAddr, co
 	hdr->ip.id = 0; // IP ID
 	hdr->ip.frag_off = htons(IP_DF);
 	hdr->ip.ttl = 128; // Time to live
-	hdr->ip.saddr = PFringHandler::GetMyIP(); // Source IP
+	hdr->ip.saddr = PCapHandler::GetMyIP(); // Source IP
 	hdr->ip.daddr = dIP; // Destination IP
 
 	hdr->udp.dest = htons(dPort);

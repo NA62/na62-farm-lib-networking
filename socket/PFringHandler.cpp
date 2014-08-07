@@ -18,7 +18,13 @@ std::string PFringHandler::deviceName_ = "";
 tbb::spin_mutex PFringHandler::asyncDataMutex_;
 std::queue<DataContainer> PFringHandler::asyncData_;
 
+uint32_t PFringHandler::myIP;
+std::vector<char> PFringHandler::myMac;
+
 PFringHandler::PFringHandler(std::string deviceName) {
+	myIP = EthernetUtils::GetIPOfInterface(deviceName);
+	myMac = std::move(EthernetUtils::GetMacOfInterface(deviceName));
+
 	deviceName_ = deviceName;
 	u_int32_t flags = 0;
 	flags |= PF_RING_LONG_HEADER;
@@ -55,11 +61,6 @@ PFringHandler::PFringHandler(std::string deviceName) {
 			exit(1);
 		}
 	}
-
-	/*
-	 * Start gratuitous ARP request sending thread
-	 */
-	startThread("ArpSender");
 }
 
 void PFringHandler::thread() {
@@ -95,9 +96,9 @@ int PFringHandler::DoSendQueuedFrames(uint16_t threadNum) {
 		const DataContainer data = asyncData_.front();
 		asyncData_.pop();
 		asyncDataMutex_.unlock();
-		int bytes = SendFrameConcurrently(threadNum, data.data, data.length);
+		SendFrameConcurrently(threadNum, data.data, data.length);
 		delete[] data.data;
-		return bytes;
+		return data.length;
 	}
 	asyncDataMutex_.unlock();
 	return 0;

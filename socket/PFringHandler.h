@@ -6,8 +6,8 @@
  */
 
 #pragma once
-#ifndef PFRINGHANDLER_H_
-#define PFRINGHANDLER_H_
+#ifndef PFringHandler_H_
+#define PFringHandler_H_
 
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
@@ -16,8 +16,6 @@
 #include <queue>
 #include <tbb/spin_mutex.h>
 #include <tbb/mutex.h>
-#include <utils/ThreadsafeQueue.h>
-#include <utils/Stopwatch.h>
 #include <utils/AExecutable.h>
 
 #include "EthernetUtils.h"
@@ -58,7 +56,10 @@ public:
 	 */
 	static int DoSendQueuedFrames(uint16_t threadNum);
 
-	static inline int SendFrameConcurrently(uint16_t threadNum, char *pkt,
+	/**
+	 * Sends the given data
+	 */
+	static inline void SendFrameConcurrently(uint16_t threadNum, char *pkt,
 			u_int pktLen, bool flush = true, bool activePoll = true) {
 		/*
 		 * Check if an Ethernet trailer is needed
@@ -73,37 +74,31 @@ public:
 			memset(buff + pktLen, 0, 64 - pktLen);
 			pktLen = 64;
 
-			int rc = queueRings_[threadNum % numberOfQueues_]->send_packet(
-					(char*) buff, pktLen, flush, activePoll);
+			while (queueRings_[threadNum % numberOfQueues_]->send_packet(
+					(char*) buff, pktLen, flush, activePoll) == -1) {
+				usleep(100);
+			}
 			delete[] buff;
-			return rc;
 		}
 
-		return queueRings_[threadNum % numberOfQueues_]->send_packet(
-				(char*) pkt, pktLen, flush, activePoll);
-
-//		if (numberOfQueues_ == 1) {
-//			boost::lock_guard<boost::mutex> lock(sendMutex_); // Will lock sendMutex until return
-//			int result = queueRings_[0]->send_packet((char*) pkt, pktLen, flush,
-//					activePoll);
-//			return result;
-//		}
+		while (queueRings_[threadNum % numberOfQueues_]->send_packet(
+				(char*) pkt, pktLen, flush, activePoll)) {
+			usleep(100);
+		}
 	}
 
 	/**
 	 * Returns the 6 byte long hardware address of the NIC the PFring object is assigned to.
 	 */
 	static inline std::vector<char> GetMyMac() {
-		return std::move(
-				EthernetUtils::GetMacOfInterface(
-						PFringHandler::GetDeviceName()));
+		return myMac;
 	}
 
 	/**
 	 * Returns the 4 byte long IP address of the NIC the PFring object is assigned to in network byte order.
 	 */
 	static inline u_int32_t GetMyIP() {
-		return EthernetUtils::GetIPOfInterface(PFringHandler::GetDeviceName());
+		return myIP;
 	}
 
 	static inline uint64_t GetBytesReceived() {
@@ -115,14 +110,6 @@ public:
 	}
 
 	static void PrintStats();
-
-	static void UpdateStats();
-
-	static inline uint64_t GetPacksDroppedWorker() {
-
-		pfring_stat pfringStat = GetStats();
-		return pfringStat.drop;
-	}
 
 	static uint16_t GetNumberOfQueues() {
 		return numberOfQueues_;
@@ -138,6 +125,9 @@ private:
 
 	static tbb::spin_mutex asyncDataMutex_;
 	static std::queue<DataContainer> asyncData_;
+
+	static uint32_t myIP;
+	static std::vector<char> myMac;
 
 	static pfring_stat GetStats() {
 		pfring_stat stats = { 0 };
@@ -158,4 +148,4 @@ private:
 ;
 
 } /* namespace na62 */
-#endif /* PFRINGHANDLER_H_ */
+#endif /* PFringHandler_H_ */
