@@ -21,12 +21,13 @@
 #include <tbb/mutex.h>
 
 #include "EthernetUtils.h"
-#include <linux/pf_ring.h>
+#include <pfring.h>
 
 namespace na62 {
 class NetworkHandler: public AExecutable {
 public:
 	NetworkHandler(std::string deviceName);
+	virtual ~NetworkHandler();
 
 	static int GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
 			u_int pkt_len, uint8_t wait_for_incoming_packet, uint queueNumber);
@@ -47,7 +48,7 @@ public:
 	 */
 	static int DoSendQueuedFrames(uint16_t threadNum);
 
-	static int SendFrameConcurrently(uint16_t threadNum, char *pkt,
+	static int SendFrameConcurrently(uint16_t threadNum, const u_char *pkt,
 			u_int pktLen, bool flush = true, bool activePoll = true);
 
 	static void PrintStats();
@@ -65,7 +66,7 @@ public:
 	 * Returns the 4 byte long IP address of the NIC the PFring object is assigned to in network byte order.
 	 */
 	static inline u_int32_t GetMyIP() {
-		return myIP;
+		return myIP_;
 	}
 
 	static inline uint64_t GetBytesReceived() {
@@ -78,7 +79,7 @@ public:
 
 private:
 	static std::vector<char> myMac_;
-	static uint32_t myIP;
+	static uint32_t myIP_;
 
 	static std::atomic<uint64_t> bytesReceived_;
 	static std::atomic<uint64_t> framesReceived_;

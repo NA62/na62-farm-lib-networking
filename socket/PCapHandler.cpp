@@ -1,11 +1,11 @@
 /*
- * PCapHandler.cpp
+ * NetworkHandler.cpp
  *
  *  Created on: Aug 7, 2014
  *      Author: root
  */
 
-#include "PCapHandler.h"
+#include "NetworkHandler.h"
 
 #include <asm-generic/socket.h>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
@@ -26,26 +26,24 @@
 
 namespace na62 {
 
-std::atomic<uint64_t> PCapHandler::bytesReceived_(0);
-std::atomic<uint64_t> PCapHandler::framesReceived_(0);
+std::atomic<uint64_t> NetworkHandler::bytesReceived_(0);
+std::atomic<uint64_t> NetworkHandler::framesReceived_(0);
 
-std::string PCapHandler::deviceName_ = "";
-tbb::spin_mutex PCapHandler::asyncDataMutex_;
-std::queue<DataContainer> PCapHandler::asyncData_;
+std::string NetworkHandler::deviceName_ = "";
+tbb::spin_mutex NetworkHandler::asyncDataMutex_;
+std::queue<DataContainer> NetworkHandler::asyncData_;
 
+static int socket_;
+static struct sockaddr_ll socket_address_;
 
-int PCapHandler::socket_;
-struct sockaddr_ll PCapHandler::socket_address_;
+std::vector<char> NetworkHandler::myMac_;
+uint32_t NetworkHandler::myIP_;
 
-uint32_t PCapHandler::myIP;
-std::vector<char> PCapHandler::PCapHandler::myMac;
+static u_char* recvBuffer_ = new u_char[BUF_SIZE];
 
-
-u_char* PCapHandler::recvBuffer_ = new u_char[BUF_SIZE];
-
-PCapHandler::PCapHandler(std::string deviceName) {
-	myIP = EthernetUtils::GetIPOfInterface(deviceName);
-	myMac = std::move(EthernetUtils::GetMacOfInterface(deviceName));
+NetworkHandler::NetworkHandler(std::string deviceName) {
+	myIP_ = EthernetUtils::GetIPOfInterface(deviceName);
+	myMac_ = std::move(EthernetUtils::GetMacOfInterface(deviceName));
 
 #define ETHER_TYPE	0x0800
 	int sockopt;
@@ -106,11 +104,15 @@ PCapHandler::PCapHandler(std::string deviceName) {
 
 }
 
-PCapHandler::~PCapHandler() {
+NetworkHandler::~NetworkHandler() {
 	close(socket_);
 }
 
-void PCapHandler::thread() {
+uint16_t NetworkHandler::GetNumberOfQueues() {
+	return 1;
+}
+
+void NetworkHandler::thread() {
 	/*
 	 * Periodically send a gratuitous ARP frames
 	 */
@@ -123,7 +125,7 @@ void PCapHandler::thread() {
 	}
 }
 
-int PCapHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
+int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
 		u_int pkt_len, uint8_t wait_for_incoming_packet, uint queueNumber) {
 	*pkt = recvBuffer_;
 	int rc = recvfrom(socket_, (void*) *pkt, BUF_SIZE, 0, NULL, NULL);
@@ -137,23 +139,23 @@ int PCapHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
 	return hdr->len;
 }
 
-void PCapHandler::SendFrameConcurrently(uint16_t threadNum, const u_char *pkt,
-		u_int pktLen, bool flush, bool activePoll) {
+int NetworkHandler::SendFrameConcurrently(uint16_t threadNum,
+		const u_char *pkt, u_int pktLen, bool flush, bool activePoll) {
 
 	/* Send packet */
 	if (sendto(socket_, (void*) pkt, pktLen, 0,
 			(struct sockaddr*) &socket_address_, sizeof(struct sockaddr_ll))
 			< 0)
 		printf("Send failed\n");
-
+return pktLen;
 }
 
-void PCapHandler::AsyncSendFrame(const DataContainer&& data) {
+void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
 	tbb::spin_mutex::scoped_lock my_lock(asyncDataMutex_);
 	asyncData_.push(data);
 }
 
-int PCapHandler::DoSendQueuedFrames(uint16_t threadNum) {
+int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
 	asyncDataMutex_.lock();
 	if (!asyncData_.empty()) {
 		const DataContainer data = asyncData_.front();
@@ -168,7 +170,7 @@ int PCapHandler::DoSendQueuedFrames(uint16_t threadNum) {
 	return 0;
 }
 
-void PCapHandler::PrintStats() {
+void NetworkHandler::PrintStats() {
 }
 
 }

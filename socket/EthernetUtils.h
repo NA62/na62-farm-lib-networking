@@ -26,7 +26,7 @@
 
 namespace na62 {
 
-class PCapHandler;
+class NetworkHandler;
 
 struct DataContainer {
 	char * data;
@@ -46,7 +46,7 @@ public:
 	 * Returns the 6 byte long hardware address of the interface with the given name.
 	 *
 	 * Note: This also works with interfaces running with a pf_ring driver like "dna:ethX". So you
-	 * cann call EthernetUtils::GetMacOfInterface(PCapHandler::getDeviceName()); as implemented in PCapHandler.cpp
+	 * cann call EthernetUtils::GetMacOfInterface(NetworkHandler::getDeviceName()); as implemented in NetworkHandler.cpp
 	 */
 	static std::vector<char> GetMacOfInterface(std::string iface);
 
