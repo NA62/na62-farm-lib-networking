@@ -246,6 +246,9 @@ bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 
 				MRPSendTimer_.start();
 
+				L1TriggersSent += ((cream::MRP_FRAME_HDR*)container.data)->MRP_HDR.numberOfTriggers;
+				L1MRPsSent++;
+
 				sendMutex_.unlock();
 				return true;
 			}
@@ -303,10 +306,6 @@ void L1DistributionHandler::Async_SendMRP(
 
 	std::lock_guard<std::mutex> lock(sendMutex_);
 	MRPQueue.push( { buff, offset });
-
-	L1TriggersSent += numberOfTriggers;
-	L1MRPsSent++;
-
 }
 }
 /* namespace cream */
