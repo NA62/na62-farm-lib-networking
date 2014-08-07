@@ -91,6 +91,14 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 		exit(EXIT_FAILURE);
 	}
 
+	/*
+	 * Buffer size
+	 */
+	int n = 1024 * 512; //experiment with it
+	if (setsockopt(socket_, SOL_SOCKET, SO_RCVBUF, &n, sizeof(n)) == -1) {
+	  //oops... check this
+	}
+
 	struct ifreq if_idx;
 
 	/* Get the index of the interface to send on */
@@ -127,11 +135,12 @@ void NetworkHandler::thread() {
 
 int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
 		u_int pkt_len, uint8_t wait_for_incoming_packet, uint queueNumber) {
-	*pkt = recvBuffer_;
-	int rc = recvfrom(socket_, (void*) *pkt, BUF_SIZE, 0, NULL, NULL);
+	int rc = recvfrom(socket_, (void*) recvBuffer_, BUF_SIZE, 0, NULL, NULL);
 	if (rc == -1) {
 		return 0;
 	}
+
+	*pkt = recvBuffer_;
 	hdr->len = rc;
 	framesReceived_++;
 	bytesReceived_ += hdr->len;
