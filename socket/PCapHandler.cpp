@@ -7,18 +7,22 @@
 
 #include "PCapHandler.h"
 
+#include <asm-generic/socket.h>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/thread/pthread/thread_data.hpp>
 #include <linux/if_ether.h>
-#include <net/ethernet.h>
 #include <net/if.h>
 #include <netinet/in.h>
-#include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <vector>
+
+#define BUF_SIZE 9000
 
 namespace na62 {
 
@@ -29,62 +33,81 @@ std::string PCapHandler::deviceName_ = "";
 tbb::spin_mutex PCapHandler::asyncDataMutex_;
 std::queue<DataContainer> PCapHandler::asyncData_;
 
-pcap_t* PCapHandler::pcap_;
-pcap_t* PCapHandler::pcap_sender_;
+
+int PCapHandler::socket_;
+struct sockaddr_ll PCapHandler::socket_address_;
 
 uint32_t PCapHandler::myIP;
 std::vector<char> PCapHandler::PCapHandler::myMac;
+
+
+u_char* PCapHandler::recvBuffer_ = new u_char[BUF_SIZE];
 
 PCapHandler::PCapHandler(std::string deviceName) {
 	myIP = EthernetUtils::GetIPOfInterface(deviceName);
 	myMac = std::move(EthernetUtils::GetMacOfInterface(deviceName));
 
-	// Construct Ethernet header (except for source MAC address).
-	// (Destination set to broadcast address, FF:FF:FF:FF:FF:FF.)
-	struct ether_header header;
-	header.ether_type = htons(ETH_P_ARP);
-	memset(header.ether_dhost, 0xff, sizeof(header.ether_dhost));
+#define ETHER_TYPE	0x0800
+	int sockopt;
+	struct ifreq ifopts; /* set promiscuous mode */
+	struct ifreq if_ip; /* get ip addr */
 
-	// Write the interface name to an ifreq structure,
-	// for obtaining the source MAC and IP addresses.
-	struct ifreq ifr;
-	if (deviceName.length() < sizeof(ifr.ifr_name)) {
-		memcpy(ifr.ifr_name, deviceName.c_str(), deviceName.length());
-		ifr.ifr_name[deviceName.length()] = 0;
-	} else {
-		fprintf(stderr, "interface name is too long");
-		exit(1);
+	memset(&if_ip, 0, sizeof(struct ifreq));
+
+	/* Open PF_PACKET socket, listening for EtherType ETHER_TYPE */
+	if ((socket_ = socket(PF_PACKET, SOCK_RAW, htons(ETHER_TYPE))) == -1) {
+		perror("listener: socket");
+		return;
 	}
 
-	// Open a PCAP packet capture descriptor for the specified interface.
-	char pcap_errbuf[PCAP_ERRBUF_SIZE];
-	pcap_errbuf[0] = '\0';
-	pcap_ = pcap_open_live(deviceName.c_str(), 96, 0, 1, pcap_errbuf);
-
-	if (pcap_errbuf[0] != '\0') {
-		fprintf(stderr, "%s\n", pcap_errbuf);
+	/* Set interface to promiscuous mode - do we need to do this every time? */
+	strncpy(ifopts.ifr_name, deviceName.c_str(), deviceName.length() - 1);
+	ioctl(socket_, SIOCGIFFLAGS, &ifopts);
+	ifopts.ifr_flags |= IFF_PROMISC;
+	ioctl(socket_, SIOCSIFFLAGS, &ifopts);
+	/* Allow the socket to be reused - incase connection is closed prematurely */
+	if (setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof sockopt)
+			== -1) {
+		perror("setsockopt");
+		close(socket_);
+		exit(EXIT_FAILURE);
 	}
-	if (!pcap_) {
-		exit(1);
+	/* Bind to device */
+	if (setsockopt(socket_, SOL_SOCKET, SO_BINDTODEVICE, deviceName.c_str(),
+			deviceName.length()) == -1) {
+		perror("SO_BINDTODEVICE");
+		close(socket_);
+		exit(EXIT_FAILURE);
 	}
 
-
-
-
-	pcap_errbuf[0] = '\0';
-	pcap_sender_ = pcap_open_live(deviceName.c_str(), 96, 0, 1, pcap_errbuf);
-
-	if (pcap_errbuf[0] != '\0') {
-		fprintf(stderr, "%s\n", pcap_errbuf);
+	/*
+	 * Timeout
+	 */
+	struct timeval tv;
+	tv.tv_sec = 0; /* 30 Secs Timeout */
+	tv.tv_usec = 1000;  // Not init'ing this can cause strange errors
+	if (setsockopt(socket_, SOL_SOCKET, SO_RCVTIMEO, (char *) &tv,
+			sizeof(struct timeval)) == -1) {
+		perror("SO_RCVTIMEO");
+		close(socket_);
+		exit(EXIT_FAILURE);
 	}
-	if (!pcap_sender_) {
-		exit(1);
-	}
+
+	struct ifreq if_idx;
+
+	/* Get the index of the interface to send on */
+	memset(&if_idx, 0, sizeof(struct ifreq));
+	strncpy(if_idx.ifr_name, deviceName.c_str(), deviceName.length());
+	if (ioctl(socket_, SIOCGIFINDEX, &if_idx) < 0)
+		perror("SIOCGIFINDEX");
+
+	/* Index of the network device */
+	socket_address_.sll_ifindex = if_idx.ifr_ifindex;
+
 }
 
 PCapHandler::~PCapHandler() {
-	// Close the PCAP descriptor.
-	pcap_close(pcap_);
+	close(socket_);
 }
 
 void PCapHandler::thread() {
@@ -102,35 +125,27 @@ void PCapHandler::thread() {
 
 int PCapHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
 		u_int pkt_len, uint8_t wait_for_incoming_packet, uint queueNumber) {
-	struct pcap_pkthdr header;
-
-	const u_char* data = pcap_next(pcap_, &header);
-	if (data == nullptr) {
+	*pkt = recvBuffer_;
+	int rc = recvfrom(socket_, (void*) *pkt, BUF_SIZE, 0, NULL, NULL);
+	if (rc == -1) {
 		return 0;
 	}
+	hdr->len = rc;
+	framesReceived_++;
+	bytesReceived_ += hdr->len;
 
-	*pkt = data;
-	hdr->len = header.len;
-	hdr->caplen = header.caplen;
-	std::cout << "Received " << header.len << " Bytes" << std::endl;
-	return header.len;
+	return hdr->len;
 }
 
 void PCapHandler::SendFrameConcurrently(uint16_t threadNum, const u_char *pkt,
 		u_int pktLen, bool flush, bool activePoll) {
-	std::cout << "Sending " << (int) pktLen << std::endl;
-//	// Write the Ethernet frame to the interface.
-//	if (pcap_inject(pcap_, pkt, pktLen) == -1) {
-//		pcap_perror(pcap_, 0);
-//		pcap_close(pcap_);
-//		exit(1);
-//	}
 
-	if (pcap_sendpacket(pcap_sender_, pkt, pktLen) != 0) {
-		pcap_perror(pcap_sender_, 0);
-		pcap_close(pcap_sender_);
-		exit(1);
-	}
+	/* Send packet */
+	if (sendto(socket_, (void*) pkt, pktLen, 0,
+			(struct sockaddr*) &socket_address_, sizeof(struct sockaddr_ll))
+			< 0)
+		printf("Send failed\n");
+
 }
 
 void PCapHandler::AsyncSendFrame(const DataContainer&& data) {
@@ -144,7 +159,8 @@ int PCapHandler::DoSendQueuedFrames(uint16_t threadNum) {
 		const DataContainer data = asyncData_.front();
 		asyncData_.pop();
 		asyncDataMutex_.unlock();
-		SendFrameConcurrently(threadNum, (const u_char*)data.data, data.length);
+		SendFrameConcurrently(threadNum, (const u_char*) data.data,
+				data.length);
 		delete[] data.data;
 		return data.length;
 	}

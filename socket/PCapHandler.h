@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cstdbool>
 #include <linux/pf_ring.h>
+#include <linux/if_packet.h>
 
 #include "EthernetUtils.h"
 
@@ -82,8 +83,8 @@ public:
 	}
 
 private:
-	static pcap_t* pcap_;
-	static pcap_t* pcap_sender_;
+	static int socket_;
+	static struct sockaddr_ll socket_address_;
 
 	static std::string deviceName_;
 	static tbb::spin_mutex asyncDataMutex_;
@@ -94,6 +95,8 @@ private:
 
 	static uint32_t myIP;
 	static std::vector<char> myMac;
+
+	static u_char* recvBuffer_;
 
 	void thread();
 };
