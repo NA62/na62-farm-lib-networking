@@ -5,6 +5,7 @@
  *      Author: root
  */
 
+#ifndef USE_PFRING
 #include "NetworkHandler.h"
 
 #include <asm-generic/socket.h>
@@ -184,3 +185,4 @@ void NetworkHandler::PrintStats() {
 
 }
 /* namespace na62 */
+#endif
