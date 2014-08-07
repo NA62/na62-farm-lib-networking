@@ -1,24 +1,52 @@
 /*
- * PFringHandler.cpp
+ * NetworkHandler.cpp
  *
  *  Created on: Jan 10, 2012
  *      Author: Jonas Kunze (kunze.jonas@gmail.com)
  */
 
-#include "PFringHandler.h"
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/thread/pthread/thread_data.hpp>
 #include <glog/logging.h>
+#include <linux/pf_ring.h>
+#include <sys/types.h>
+#include <tbb/spin_mutex.h>
+#include <utils/AExecutable.h>
+#include <algorithm>
+#include <atomic>
+#include <cstdbool>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <queue>
+#include <string>
+#include <vector>
+
+#include "EthernetUtils.h"
+#include "NetworkHandler.h"
+#include "PFring.h"
+#include <pfring.h>
 
 namespace na62 {
-ntop::PFring ** PFringHandler::queueRings_;
-uint16_t PFringHandler::numberOfQueues_;
+uint16_t NetworkHandler::numberOfQueues_;
 
-std::atomic<uint64_t> PFringHandler::bytesReceived_(0);
-std::atomic<uint64_t> PFringHandler::framesReceived_(0);
-std::string PFringHandler::deviceName_ = "";
-tbb::spin_mutex PFringHandler::asyncDataMutex_;
-std::queue<DataContainer> PFringHandler::asyncData_;
+std::atomic<uint64_t> NetworkHandler::bytesReceived_(0);
+std::atomic<uint64_t> NetworkHandler::framesReceived_(0);
+std::string NetworkHandler::deviceName_ = "";
+tbb::spin_mutex NetworkHandler::asyncDataMutex_;
+std::queue<DataContainer> NetworkHandler::asyncData_;
 
-PFringHandler::PFringHandler(std::string deviceName) {
+std::vector<char> NetworkHandler::myMac_;
+uint32_t NetworkHandler::myIP;
+
+static ntop::PFring ** queueRings_; // one ring per queue
+
+NetworkHandler::NetworkHandler(std::string deviceName) {
+	myMac_ = EthernetUtils::GetMacOfInterface(GetDeviceName());
+	myIP = EthernetUtils::GetIPOfInterface(GetDeviceName());
+
 	deviceName_ = deviceName;
 	u_int32_t flags = 0;
 	flags |= PF_RING_LONG_HEADER;
@@ -62,7 +90,7 @@ PFringHandler::PFringHandler(std::string deviceName) {
 	startThread("ArpSender");
 }
 
-void PFringHandler::thread() {
+void NetworkHandler::thread() {
 	/*
 	 * Periodically send a gratuitous ARP frames
 	 */
@@ -75,7 +103,7 @@ void PFringHandler::thread() {
 	}
 }
 
-void PFringHandler::PrintStats() {
+void NetworkHandler::PrintStats() {
 	pfring_stat stats = { 0 };
 	LOG(INFO)<< "Ring\trecv\tdrop";
 	for (int i = 0; i < numberOfQueues_; i++) {
@@ -84,12 +112,12 @@ void PFringHandler::PrintStats() {
 	}
 }
 
-void PFringHandler::AsyncSendFrame(const DataContainer&& data) {
+void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
 	tbb::spin_mutex::scoped_lock my_lock(asyncDataMutex_);
 	asyncData_.push(data);
 }
 
-int PFringHandler::DoSendQueuedFrames(uint16_t threadNum) {
+int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
 	asyncDataMutex_.lock();
 	if (!asyncData_.empty()) {
 		const DataContainer data = asyncData_.front();
@@ -101,6 +129,51 @@ int PFringHandler::DoSendQueuedFrames(uint16_t threadNum) {
 	}
 	asyncDataMutex_.unlock();
 	return 0;
+}
+
+int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr,
+		const u_char** pkt, u_int pkt_len, uint8_t wait_for_incoming_packet,
+		uint queueNumber) {
+	int result = queueRings_[queueNumber]->get_next_packet(hdr, (char**)pkt, pkt_len,
+			wait_for_incoming_packet);
+	if (result == 1) {
+		bytesReceived_ += hdr->len;
+		framesReceived_++;
+	}
+	return result;
+}
+
+std::string NetworkHandler::GetDeviceName() {
+	return deviceName_;
+}
+
+int NetworkHandler::SendFrameConcurrently(uint16_t threadNum,
+		char *pkt, u_int pktLen, bool flush, bool activePoll) {
+	/*
+	 * Check if an Ethernet trailer is needed
+	 */
+	if (pktLen < 64) {
+		/*
+		 * TODO: using tc_malloc pkt  will already be 64 Bytes long: no need to create new one! Just check it's length...
+		 */
+		char* buff = new char[64];
+		memcpy(buff, pkt, pktLen);
+
+		memset(buff + pktLen, 0, 64 - pktLen);
+		pktLen = 64;
+
+		int rc = queueRings_[threadNum % numberOfQueues_]->send_packet(
+				(char*) buff, pktLen, flush, activePoll);
+		delete[] buff;
+		return rc;
+	}
+
+	return queueRings_[threadNum % numberOfQueues_]->send_packet((char*) pkt,
+			pktLen, flush, activePoll);
+}
+
+uint16_t NetworkHandler::GetNumberOfQueues() {
+	return numberOfQueues_;
 }
 
 }

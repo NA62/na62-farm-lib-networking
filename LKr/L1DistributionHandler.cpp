@@ -27,7 +27,7 @@
 #include <vector>
 #include <queue>
 
-#include "../socket/PFringHandler.h"
+#include "../socket/NetworkHandler.h"
 #include "../structs/Network.h"
 
 namespace na62 {
@@ -127,10 +127,10 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 			EthernetUtils::StringToMAC("00:11:22:33:44:55"),
 			0/*Will be set later*/, sourcePort, destinationPort);
 
-	CREAM_MulticastRequestHdr->MRP_HDR.ipAddress = PFringHandler::GetMyIP();
+	CREAM_MulticastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 	CREAM_MulticastRequestHdr->MRP_HDR.reserved = 0;
 
-	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = PFringHandler::GetMyIP();
+	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 	CREAM_UnicastRequestHdr->MRP_HDR.reserved = 0;
 
 //	EthernetUtils::GenerateUDP(CREAM_RequestBuff, EthernetUtils::StringToMAC("00:15:17:b2:26:fa"), "10.0.4.3", sPort, dPort);
@@ -241,7 +241,7 @@ bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 //				std::cout << msg.str();
 //				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-				PFringHandler::SendFrameConcurrently(threadNum, container.data,
+				NetworkHandler::SendFrameConcurrently(threadNum, container.data,
 						container.length);
 
 				MRPSendTimer_.start();
