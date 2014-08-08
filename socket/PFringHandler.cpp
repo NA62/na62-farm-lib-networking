@@ -84,11 +84,6 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 			exit(1);
 		}
 	}
-
-	/*
-	 * Start gratuitous ARP request sending thread
-	 */
-	startThread("ArpSender");
 }
 
 NetworkHandler::~NetworkHandler() {
