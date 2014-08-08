@@ -44,10 +44,11 @@ uint32_t NetworkHandler::myIP_;
 static ntop::PFring ** queueRings_; // one ring per queue
 
 NetworkHandler::NetworkHandler(std::string deviceName) {
-	myMac_ = EthernetUtils::GetMacOfInterface(GetDeviceName());
+	deviceName_ = deviceName;
+
+	myMac_ = EthernetUtils::GetMacOfInterface(deviceName);
 	myIP_ = EthernetUtils::GetIPOfInterface(GetDeviceName());
 
-	deviceName_ = deviceName;
 	u_int32_t flags = 0;
 	flags |= PF_RING_LONG_HEADER;
 	flags |= PF_RING_PROMISC;
