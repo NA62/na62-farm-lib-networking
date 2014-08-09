@@ -77,6 +77,9 @@ bool zSuppressed) {
 	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
 			zSuppressed);
 
+	/*
+	 * FIXME: The blocking here is quite bad as this method is called for every accepted event
+	 */
 	tbb::spin_mutex::scoped_lock my_lock(multicastMRPQueue_mutex);
 	multicastMRPQueue.push(triggerHDR);
 }

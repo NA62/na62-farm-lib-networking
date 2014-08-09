@@ -117,24 +117,25 @@ void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
 }
 
 int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
-	asyncDataMutex_.lock();
-	if (!asyncData_.empty()) {
-		const DataContainer data = asyncData_.front();
-		asyncData_.pop();
-		asyncDataMutex_.unlock();
-		int bytes = SendFrameConcurrently(threadNum, (const u_char*)data.data, data.length);
-		delete[] data.data;
-		return bytes;
+	if (asyncDataMutex_.try_lock()) {
+		if (!asyncData_.empty()) {
+			const DataContainer data = asyncData_.front();
+			asyncData_.pop();
+			asyncDataMutex_.unlock();
+			int bytes = SendFrameConcurrently(threadNum,
+					(const u_char*) data.data, data.length);
+			delete[] data.data;
+			return bytes;
+		}
 	}
 	asyncDataMutex_.unlock();
 	return 0;
 }
 
-int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr,
-		const u_char** pkt, u_int pkt_len, uint8_t wait_for_incoming_packet,
-		uint queueNumber) {
-	int result = queueRings_[queueNumber]->get_next_packet(hdr, (char**)pkt, pkt_len,
-			wait_for_incoming_packet);
+int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
+		u_int pkt_len, uint8_t wait_for_incoming_packet, uint queueNumber) {
+	int result = queueRings_[queueNumber]->get_next_packet(hdr, (char**) pkt,
+			pkt_len, wait_for_incoming_packet);
 	if (result == 1) {
 		bytesReceived_ += hdr->len;
 		framesReceived_++;
@@ -146,8 +147,8 @@ std::string NetworkHandler::GetDeviceName() {
 	return deviceName_;
 }
 
-int NetworkHandler::SendFrameConcurrently(uint16_t threadNum,
-		const u_char* pkt, u_int pktLen, bool flush, bool activePoll) {
+int NetworkHandler::SendFrameConcurrently(uint16_t threadNum, const u_char* pkt,
+		u_int pktLen, bool flush, bool activePoll) {
 	/*
 	 * Check if an Ethernet trailer is needed
 	 */
