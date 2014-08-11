@@ -120,7 +120,7 @@ void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
 int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
 	if (asyncDataMutex_.try_lock()) {
 		if (!asyncData_.empty()) {
-			const DataContainer data = asyncData_.front();
+			const DataContainer data = std::move(asyncData_.front());
 			asyncData_.pop();
 			asyncDataMutex_.unlock();
 			int bytes = SendFrameConcurrently(threadNum,

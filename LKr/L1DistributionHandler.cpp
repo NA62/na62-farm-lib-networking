@@ -218,7 +218,7 @@ bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 			if (MRPSendTimer_.elapsed().wall / 1000
 					> MIN_USEC_BETWEEN_L1_REQUESTS) {
 
-				DataContainer container = MRPQueue.front();
+				DataContainer container = std::move(MRPQueue.front());
 				MRPQueue.pop();
 
 //				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -309,7 +309,7 @@ void L1DistributionHandler::Async_SendMRP(
 	memcpy(buff, dataHDRToBeSent, offset);
 
 	std::lock_guard<std::mutex> lock(sendMutex_);
-	MRPQueue.push( { buff, offset });
+	MRPQueue.push( { buff, offset, true});
 }
 }
 /* namespace cream */
