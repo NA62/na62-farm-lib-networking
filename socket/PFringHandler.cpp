@@ -91,12 +91,13 @@ NetworkHandler::~NetworkHandler() {
 
 void NetworkHandler::thread() {
 	/*
-	 * Periodically send a gratuitous ARP frames
+	 * Periodically send a gratuitous ARP frame
 	 */
-	while (true) {
-		struct DataContainer arp = EthernetUtils::GenerateGratuitousARPv4(
-				GetMyMac().data(), GetMyIP());
+	struct DataContainer arp = EthernetUtils::GenerateGratuitousARPv4(
+			GetMyMac().data(), GetMyIP());
+	arp.ownerMayFreeData = false;
 
+	while (true) {
 		AsyncSendFrame(std::move(arp));
 		boost::this_thread::sleep(boost::posix_time::seconds(60));
 	}
@@ -124,7 +125,11 @@ int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
 			asyncDataMutex_.unlock();
 			int bytes = SendFrameConcurrently(threadNum,
 					(const u_char*) data.data, data.length);
-			delete[] data.data;
+
+			if (data.ownerMayFreeData) {
+				delete[] data.data;
+			}
+
 			return bytes;
 		}
 	}

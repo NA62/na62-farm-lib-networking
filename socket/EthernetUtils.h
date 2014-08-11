@@ -31,6 +31,7 @@ class NetworkHandler;
 struct DataContainer {
 	char * data;
 	uint16_t length;
+	bool ownerMayFreeData;
 };
 
 class EthernetUtils {
@@ -98,7 +99,7 @@ public:
 		 */
 		char * data = new char[64];
 
-		DataContainer container = { data, sizeof(struct ARP_HDR) };
+		DataContainer container = { data, sizeof(struct ARP_HDR), true };
 
 		struct ARP_HDR* hdr = (struct ARP_HDR*) data;
 
