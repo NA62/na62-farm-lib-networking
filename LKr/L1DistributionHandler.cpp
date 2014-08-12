@@ -77,6 +77,9 @@ bool zSuppressed) {
 	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
 			zSuppressed);
 
+	/*
+	 * FIXME: The blocking here is quite bad as this method is called for every accepted event
+	 */
 	tbb::spin_mutex::scoped_lock my_lock(multicastMRPQueue_mutex);
 	multicastMRPQueue.push(triggerHDR);
 }
@@ -215,7 +218,7 @@ bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 			if (MRPSendTimer_.elapsed().wall / 1000
 					> MIN_USEC_BETWEEN_L1_REQUESTS) {
 
-				DataContainer container = MRPQueue.front();
+				DataContainer container = std::move(MRPQueue.front());
 				MRPQueue.pop();
 
 //				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -303,10 +306,8 @@ void L1DistributionHandler::Async_SendMRP(
 	dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
 			&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
-	memcpy(buff, dataHDRToBeSent, offset);
-
 	std::lock_guard<std::mutex> lock(sendMutex_);
-	MRPQueue.push( { buff, offset });
+	MRPQueue.push( { buff, offset, true});
 }
 }
 /* namespace cream */

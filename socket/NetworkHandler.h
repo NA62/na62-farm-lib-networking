@@ -44,7 +44,6 @@ public:
 	 * Sends one frame out of the queue filled by AsyncSendFrame.
 	 *
 	 * This should only be called by a PacketHandler thread to ensure thread safety.
-	 * TODO: This method blocks with a mutex. We should think about implementing this with ZMQ or something
 	 */
 	static int DoSendQueuedFrames(uint16_t threadNum);
 
