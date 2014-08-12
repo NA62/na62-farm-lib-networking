@@ -306,8 +306,6 @@ void L1DistributionHandler::Async_SendMRP(
 	dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
 			&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
-	memcpy(buff, dataHDRToBeSent, offset);
-
 	std::lock_guard<std::mutex> lock(sendMutex_);
 	MRPQueue.push( { buff, offset, true});
 }
