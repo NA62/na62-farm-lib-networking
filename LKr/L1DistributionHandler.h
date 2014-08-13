@@ -72,7 +72,7 @@ private:
 	static std::priority_queue < struct TRIGGER_RAW_HDR*, std::vector < struct TRIGGER_RAW_HDR* > > multicastMRPQueue;
 	static tbb::spin_mutex multicastMRPQueue_mutex; // TODO: use tbb::aggregator instead of mutex
 
-	static ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* unicastMRPWithIPsQueues;
+//	static ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* unicastMRPWithIPsQueues;
 
 	static struct cream::MRP_FRAME_HDR* CREAM_MulticastRequestHdr;
 	static struct cream::MRP_FRAME_HDR* CREAM_UnicastRequestHdr;

@@ -59,6 +59,10 @@ struct MRP_RAW_HDR {
 		MRPLength = htons(length);
 	}
 
+	uint16_t getNumberOfTriggers(){
+		return ntohs(numberOfTriggers);
+	}
+
 	uint16_t getSize(){
 		return ntohs(MRPLength);
 	}

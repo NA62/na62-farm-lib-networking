@@ -36,7 +36,7 @@ std::priority_queue<struct TRIGGER_RAW_HDR*,
 		std::vector<struct TRIGGER_RAW_HDR*> > L1DistributionHandler::multicastMRPQueue;
 tbb::spin_mutex L1DistributionHandler::multicastMRPQueue_mutex;
 
-ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* L1DistributionHandler::unicastMRPWithIPsQueues;
+//ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* L1DistributionHandler::unicastMRPWithIPsQueues;
 
 struct cream::MRP_FRAME_HDR* L1DistributionHandler::CREAM_MulticastRequestHdr;
 struct cream::MRP_FRAME_HDR* L1DistributionHandler::CREAM_UnicastRequestHdr;
@@ -102,18 +102,18 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 	NUMBER_OF_EBS = numberOfEBs;
 	MIN_USEC_BETWEEN_L1_REQUESTS = minUsecBetweenL1Requests;
 
-	void* rawData =
-			operator new[](
-					numberOfEBs
-							* sizeof(ThreadsafeQueue<
-									unicastTriggerAndCrateCREAMIDs_type> ));
-	unicastMRPWithIPsQueues = static_cast<ThreadsafeQueue<
-			unicastTriggerAndCrateCREAMIDs_type>*>(rawData);
-
-	for (int i = numberOfEBs - 1; i >= 0; i--) {
-		new (&unicastMRPWithIPsQueues[i]) ThreadsafeQueue<
-				unicastTriggerAndCrateCREAMIDs_type>(100000);
-	}
+//	void* rawData =
+//			operator new[](
+//					numberOfEBs
+//							* sizeof(ThreadsafeQueue<
+//									unicastTriggerAndCrateCREAMIDs_type> ));
+//	unicastMRPWithIPsQueues = static_cast<ThreadsafeQueue<
+//			unicastTriggerAndCrateCREAMIDs_type>*>(rawData);
+//
+//	for (int i = numberOfEBs - 1; i >= 0; i--) {
+//		new (&unicastMRPWithIPsQueues[i]) ThreadsafeQueue<
+//				unicastTriggerAndCrateCREAMIDs_type>(100000);
+//	}
 
 	CREAM_MulticastRequestHdr = new struct cream::MRP_FRAME_HDR();
 	CREAM_UnicastRequestHdr = new struct cream::MRP_FRAME_HDR();
@@ -144,8 +144,7 @@ void L1DistributionHandler::thread() {
 	 * We need all MRPs for each CREAM  but the multicastMRPQueues stores it in the opposite order (one MRP, several CREAMs).
 	 * Therefore we will fill the following map and later  produce unicast IP packets with it
 	 */
-	std::vector<struct TRIGGER_RAW_HDR*> unicastRequestsByCrateCREAMID[SourceIDManager::NUMBER_OF_EXPECTED_CREAM_PACKETS_PER_EVENT];
-
+//	std::vector<struct TRIGGER_RAW_HDR*> unicastRequestsByCrateCREAMID[SourceIDManager::NUMBER_OF_EXPECTED_CREAM_PACKETS_PER_EVENT];
 	std::vector<struct TRIGGER_RAW_HDR*> multicastRequests;
 	multicastRequests.reserve(MAX_TRIGGERS_PER_L1MRP);
 	const unsigned int sleepMicros = MIN_USEC_BETWEEN_L1_REQUESTS;
@@ -166,34 +165,33 @@ void L1DistributionHandler::thread() {
 		/*
 		 * Now send all unicast requests
 		 */
-		unicastTriggerAndCrateCREAMIDs_type unicastMRPWithCrateCREAMID;
-		for (int thread = NUMBER_OF_EBS - 1; thread != -1; thread--) { // every EB thread
-			while (unicastMRPWithIPsQueues[thread].pop(
-					unicastMRPWithCrateCREAMID)) { // every entry in the EBs queue containing MRP+list of IPs
-				for (uint32_t localCREAMID : unicastMRPWithCrateCREAMID.second) { // every IP
-					/*
-					 * Add the MRP to unicastRequestsByIP with IP as key
-					 */
-					unicastRequestsByCrateCREAMID[localCREAMID].push_back(
-							unicastMRPWithCrateCREAMID.first);
-				}
-			}
-		}
-
+//		unicastTriggerAndCrateCREAMIDs_type unicastMRPWithCrateCREAMID;
+//		for (int thread = NUMBER_OF_EBS - 1; thread != -1; thread--) { // every EB thread
+//			while (unicastMRPWithIPsQueues[thread].pop(
+//					unicastMRPWithCrateCREAMID)) { // every entry in the EBs queue containing MRP+list of IPs
+//				for (uint32_t localCREAMID : unicastMRPWithCrateCREAMID.second) { // every IP
+//					/*
+//					 * Add the MRP to unicastRequestsByIP with IP as key
+//					 */
+//					unicastRequestsByCrateCREAMID[localCREAMID].push_back(
+//							unicastMRPWithCrateCREAMID.first);
+//				}
+//			}
+//		}
 		if (multicastRequests.size() > 0) {
 			Async_SendMRP(CREAM_MulticastRequestHdr, multicastRequests);
 		} else {
 			bool didSendUnicastMRPs = false;
-			for (int i =
-					SourceIDManager::NUMBER_OF_EXPECTED_CREAM_PACKETS_PER_EVENT
-							- 1; i != -1; i--) {
-				std::vector<struct TRIGGER_RAW_HDR*> triggers =
-						unicastRequestsByCrateCREAMID[i];
-				if (triggers.size() > 0) {
-					Async_SendMRP(CREAM_UnicastRequestHdr, triggers);
-					didSendUnicastMRPs = true;
-				}
-			}
+//			for (int i =
+//					SourceIDManager::NUMBER_OF_EXPECTED_CREAM_PACKETS_PER_EVENT
+//							- 1; i != -1; i--) {
+//				std::vector<struct TRIGGER_RAW_HDR*> triggers =
+//						unicastRequestsByCrateCREAMID[i];
+//				if (triggers.size() > 0) {
+//					Async_SendMRP(CREAM_UnicastRequestHdr, triggers);
+//					didSendUnicastMRPs = true;
+//				}
+//			}
 
 			if (!didSendUnicastMRPs) {
 				/*
@@ -204,7 +202,6 @@ void L1DistributionHandler::thread() {
 				 */
 				boost::this_thread::sleep(
 						boost::posix_time::microsec(sleepMicros));
-//				std::this_thread::sleep_for(std::chrono::microseconds (sleepMicros));
 			}
 		}
 	}
@@ -250,7 +247,7 @@ bool L1DistributionHandler::DoSendMRP(const uint16_t threadNum) {
 				MRPSendTimer_.start();
 
 				L1TriggersSent +=
-						((cream::MRP_FRAME_HDR*) container.data)->MRP_HDR.numberOfTriggers;
+						((cream::MRP_FRAME_HDR*) container.data)->MRP_HDR.getNumberOfTriggers();
 				L1MRPsSent++;
 
 				sendMutex_.unlock();
@@ -307,7 +304,7 @@ void L1DistributionHandler::Async_SendMRP(
 			&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
 	std::lock_guard<std::mutex> lock(sendMutex_);
-	MRPQueue.push( { buff, offset, true});
+	MRPQueue.push( { buff, offset, true });
 }
 }
 /* namespace cream */
