@@ -114,7 +114,7 @@ void NetworkHandler::PrintStats() {
 
 void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
 	tbb::spin_mutex::scoped_lock my_lock(asyncDataMutex_);
-	asyncData_.push(data);
+	asyncData_.push(std::move(data));
 }
 
 int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {

@@ -21,6 +21,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "../structs/Network.h"
 
@@ -30,8 +31,45 @@ class NetworkHandler;
 
 struct DataContainer {
 	char * data;
-	uint16_t length;
-	bool ownerMayFreeData;
+	uint16_t length;bool ownerMayFreeData;
+
+	DataContainer(char* _data, uint16_t _length, bool _ownerMayFreeData) :
+			data(_data), length(_length), ownerMayFreeData(_ownerMayFreeData) {
+	}
+
+	~DataContainer() {
+	}
+
+	/**
+	 * Copy constructor
+	 */
+	DataContainer(const DataContainer& other) :
+			data(other.data), length(std::move(other.length)), ownerMayFreeData(
+					other.ownerMayFreeData) {
+	}
+
+	/**
+	 * Copy constructor
+	 */
+	DataContainer(const DataContainer&& other) :
+			data(other.data), length(other.length), ownerMayFreeData(
+					other.ownerMayFreeData) {
+	}
+
+	/**
+	 * Move assignment operator
+	 */
+	DataContainer& operator=(DataContainer&& other) {
+		if (&other != this) {
+			data = other.data;
+			length = other.length;
+			ownerMayFreeData = other.ownerMayFreeData;
+
+			other.data = nullptr;
+			other.length = 0;
+		}
+		return *this;
+	}
 };
 
 class EthernetUtils {
