@@ -112,6 +112,16 @@ void NetworkHandler::PrintStats() {
 	}
 }
 
+uint64_t NetworkHandler::GetFramesDropped() {
+	uint64_t dropped = 0;
+	pfring_stat stats = { 0 };
+	for (int i = 0; i < numberOfQueues_; i++) {
+		queueRings_[i]->get_stats(&stats);
+		dropped += stats.drop;
+	}
+	return dropped;
+}
+
 void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
 	tbb::spin_mutex::scoped_lock my_lock(asyncDataMutex_);
 	asyncData_.push(std::move(data));

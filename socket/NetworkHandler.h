@@ -76,6 +76,8 @@ public:
 		return framesReceived_;
 	}
 
+	static uint64_t GetFramesDropped();
+
 private:
 	static std::vector<char> myMac_;
 	static uint32_t myIP_;
