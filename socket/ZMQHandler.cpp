@@ -55,6 +55,7 @@ void ZMQHandler::DestroySocket(zmq::socket_t* socket) {
 	if(socket==nullptr){
 		return;
 	}
+
 	socket->close();
 	delete socket;
 	numberOfActiveSockets_--;

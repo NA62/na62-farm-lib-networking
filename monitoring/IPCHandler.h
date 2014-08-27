@@ -40,12 +40,18 @@ public:
 	static std::string getNextCommand();
 
 	static void setTimeout(int timeout);
-
 	static void shutDown();
 private:
-	static void connectClient();
 
-	static void bindServer();
+	/**
+	 * Returns true if all sockets were connected, false if ZMQ is shut down
+	 */
+	static bool connectClient();
+
+	/**
+	 * Returns true if all sockets were bound, false if ZMQ is shut down
+	 */
+	static bool bindServer();
 
 	static STATE currentState;
 

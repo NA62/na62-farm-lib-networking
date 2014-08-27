@@ -46,7 +46,11 @@ void IPCHandler::shutDown() {
 	ZMQHandler::DestroySocket(commandReceiver_);
 }
 
-void IPCHandler::connectClient() {
+bool IPCHandler::connectClient() {
+	if (!ZMQHandler::IsRunning()) {
+		return false;
+	}
+
 	stateSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
 	statisticsSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
 	commandReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
@@ -54,9 +58,15 @@ void IPCHandler::connectClient() {
 	commandReceiver_->connect(CommandAddress);
 	stateSender_->connect(StateAddress);
 	statisticsSender_->connect(StatisticsAddress);
+
+	return true;
 }
 
-void IPCHandler::bindServer() {
+bool IPCHandler::bindServer() {
+	if (!ZMQHandler::IsRunning()) {
+		return false;
+	}
+
 	statisticsReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
 	stateReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
 	commandSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
@@ -64,15 +74,18 @@ void IPCHandler::bindServer() {
 	stateReceiver_->bind(StateAddress);
 	statisticsReceiver_->bind(StatisticsAddress);
 	commandSender_->bind(CommandAddress);
+
+	return true;
 }
 
 /**
  * Sets the receive timeout of the statistics and state receiver sockets
  */
 void IPCHandler::setTimeout(int timeout) {
-	if (!statisticsReceiver_) {
-		bindServer();
+	if (!statisticsReceiver_ && !bindServer()) {
+		return;
 	}
+
 	statisticsReceiver_->setsockopt(ZMQ_RCVTIMEO, (const void*) &timeout,
 			(size_t) sizeof(timeout));
 	stateReceiver_->setsockopt(ZMQ_RCVTIMEO, (const void*) &timeout,
@@ -84,8 +97,9 @@ void IPCHandler::updateState(STATE newState) {
 	if (!ZMQHandler::IsRunning()) {
 		return;
 	}
-	if (!stateSender_) {
-		connectClient();
+
+	if (!stateSender_ && !connectClient()) {
+		return;
 	}
 
 	stateSender_->send((const void*) &currentState, (size_t) sizeof(STATE));
@@ -99,9 +113,11 @@ void IPCHandler::sendStatistics(std::string name, std::string values) {
 	if (!ZMQHandler::IsRunning()) {
 		return;
 	}
-	if (!statisticsSender_) {
-		connectClient();
+
+	if (!statisticsSender_ && !connectClient()) {
+		return;
 	}
+
 	if (!statisticsSender_ || name.empty() || values.empty()) {
 		return;
 	}
@@ -122,16 +138,23 @@ void IPCHandler::sendCommand(std::string command) {
 	if (!ZMQHandler::IsRunning()) {
 		return;
 	}
-	if (!commandSender_) {
-		bindServer();
+
+	if (!commandSender_ && !bindServer()) {
+		return;
 	}
 
 	if (!commandSender_ || command.empty()) {
 		return;
 	}
+	try {
+		commandSender_->send((const void*) command.data(),
+				(size_t) command.length());
 
-	commandSender_->send((const void*) command.data(),
-			(size_t) command.length());
+	} catch (const zmq::error_t& ex) {
+		if (ex.num() != EINTR) { // try again if EINTR (signal caught)
+			ZMQHandler::DestroySocket(commandSender_);
+		}
+	}
 }
 
 /**
@@ -141,13 +164,20 @@ std::string IPCHandler::getNextCommand() {
 	if (!ZMQHandler::IsRunning()) {
 		return "";
 	}
-	if (!commandReceiver_) {
-		connectClient();
+
+	if (!commandReceiver_ && !connectClient()) {
+		return "";
 	}
 
 	zmq::message_t msg;
-	commandReceiver_->recv(&msg);
-	return std::string((const char*) msg.data(), msg.size());
+	try {
+		commandReceiver_->recv(&msg);
+		return std::string((const char*) msg.data(), msg.size());
+	} catch (const zmq::error_t& ex) {
+		if (ex.num() != EINTR) { // try again if EINTR (signal caught)
+			ZMQHandler::DestroySocket(commandReceiver_);
+		}
+	}
 	return "";
 }
 
@@ -156,13 +186,20 @@ std::string IPCHandler::tryToReceiveStatistics() {
 		return "";
 	}
 
-	if (!statisticsReceiver_) {
-		bindServer();
+	if (!statisticsReceiver_ && !bindServer()) {
+		return "";
 	}
 
 	zmq::message_t msg;
-	if (statisticsReceiver_->recv(&msg)) {
-		return std::string((const char*) msg.data(), msg.size());
+
+	try {
+		if (statisticsReceiver_->recv(&msg)) {
+			return std::string((const char*) msg.data(), msg.size());
+		}
+	} catch (const zmq::error_t& ex) {
+		if (ex.num() != EINTR) { // try again if EINTR (signal caught)
+			ZMQHandler::DestroySocket(statisticsReceiver_);
+		}
 	}
 	return "";
 }
@@ -172,16 +209,20 @@ STATE IPCHandler::tryToReceiveState() {
 		return TIMEOUT;
 	}
 
-	if (!stateReceiver_) {
-		bindServer();
+	if (!stateReceiver_ && !bindServer()) {
+		return TIMEOUT;
 	}
 
 	zmq::message_t msg;
-
-	if (stateReceiver_->recv(&msg)) {
-		return *((STATE*) msg.data());
+	try {
+		if (stateReceiver_->recv(&msg)) {
+			return *((STATE*) msg.data());
+		}
+	} catch (const zmq::error_t& ex) {
+		if (ex.num() != EINTR) { // try again if EINTR (signal caught)
+			ZMQHandler::DestroySocket(stateReceiver_);
+		}
 	}
-
 	return TIMEOUT;
 }
 
