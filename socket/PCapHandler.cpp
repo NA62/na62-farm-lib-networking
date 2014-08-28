@@ -177,9 +177,10 @@ namespace na62 {
 				delete[] data.data;
 			}
 
+			asyncDataMutex_.unlock();
 			return data.length;
 		}
-		asyncDataMutex_.unlock();
+
 		return 0;
 	}
 

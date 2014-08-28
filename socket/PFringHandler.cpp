@@ -142,8 +142,8 @@ int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
 
 			return bytes;
 		}
+		asyncDataMutex_.unlock();
 	}
-	asyncDataMutex_.unlock();
 	return 0;
 }
 
