@@ -41,6 +41,10 @@ public:
 		return running_;
 	}
 
+	static void inline freeZmqMessage(void *data, void *hint) {
+		delete[] ((char*) data);
+	}
+
 	/*
 	 * Binds the socket to the specified address and stores the enables connections to this address
 	 */
