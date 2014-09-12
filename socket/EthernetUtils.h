@@ -21,17 +21,55 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "../structs/Network.h"
 
 namespace na62 {
 
-class PFringHandler;
-// forward declaration
+class NetworkHandler;
 
 struct DataContainer {
 	char * data;
-	uint16_t length;
+	uint16_t length;bool ownerMayFreeData;
+
+	DataContainer(char* _data, uint16_t _length, bool _ownerMayFreeData) :
+			data(_data), length(_length), ownerMayFreeData(_ownerMayFreeData) {
+	}
+
+	~DataContainer() {
+	}
+
+	/**
+	 * Copy constructor
+	 */
+	DataContainer(const DataContainer& other) :
+			data(other.data), length(std::move(other.length)), ownerMayFreeData(
+					other.ownerMayFreeData) {
+	}
+
+	/**
+	 * Copy constructor
+	 */
+	DataContainer(const DataContainer&& other) :
+			data(other.data), length(other.length), ownerMayFreeData(
+					other.ownerMayFreeData) {
+	}
+
+	/**
+	 * Move assignment operator
+	 */
+	DataContainer& operator=(DataContainer&& other) {
+		if (&other != this) {
+			data = other.data;
+			length = other.length;
+			ownerMayFreeData = other.ownerMayFreeData;
+
+			other.data = nullptr;
+			other.length = 0;
+		}
+		return *this;
+	}
 };
 
 class EthernetUtils {
@@ -47,7 +85,7 @@ public:
 	 * Returns the 6 byte long hardware address of the interface with the given name.
 	 *
 	 * Note: This also works with interfaces running with a pf_ring driver like "dna:ethX". So you
-	 * cann call EthernetUtils::GetMacOfInterface(PFringHandler::getDeviceName()); as implemented in PFringHandler.cpp
+	 * cann call EthernetUtils::GetMacOfInterface(NetworkHandler::getDeviceName()); as implemented in NetworkHandler.cpp
 	 */
 	static std::vector<char> GetMacOfInterface(std::string iface);
 
@@ -99,7 +137,7 @@ public:
 		 */
 		char * data = new char[64];
 
-		DataContainer container = { data, sizeof(struct ARP_HDR) };
+		DataContainer container = { data, sizeof(struct ARP_HDR), true };
 
 		struct ARP_HDR* hdr = (struct ARP_HDR*) data;
 
