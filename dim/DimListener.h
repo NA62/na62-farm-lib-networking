@@ -8,12 +8,13 @@
 #ifndef DIMLISTENER_H_
 #define DIMLISTENER_H_
 
+#include <dim/dis.hxx>
 #include <dim/dic.hxx>
 #include <sys/types.h>
 #include <algorithm>
 #include <vector>
+#include <thread>
 #include <functional>
-
 
 namespace na62 {
 namespace dim {
@@ -41,6 +42,13 @@ public:
 		burstNumberCallbacks.push_back(std::move(callback));
 	}
 
+	void startServer() {
+		thread = new std::thread([this]() {
+			DimServer server;
+			server.start();
+		});
+	}
+
 private:
 	void infoHandler();
 
@@ -53,6 +61,8 @@ private:
 	std::vector<std::function<void(uint)>> sobCallbacks;
 	std::vector<std::function<void(uint)>> runNumberCallbacks;
 	std::vector<std::function<void(uint)>> burstNumberCallbacks;
+
+	std::thread* thread;
 };
 } /* namespace dim */
 } /* namespace na62 */

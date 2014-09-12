@@ -17,7 +17,6 @@
 #include <iostream>
 #include <map>
 
-
 namespace na62 {
 
 zmq::context_t* ZMQHandler::context_;
@@ -52,14 +51,15 @@ zmq::socket_t* ZMQHandler::GenerateSocket(int socketType, int highWaterMark) {
 }
 
 void ZMQHandler::DestroySocket(zmq::socket_t* socket) {
-	if(socket==nullptr){
+	if (socket == nullptr) {
 		return;
 	}
 
 	socket->close();
 	delete socket;
 	numberOfActiveSockets_--;
-	std::cout << "Closed ZMQ socket ("<< numberOfActiveSockets_<< " remaining)" << std::endl;
+	std::cout << "Closed ZMQ socket (" << numberOfActiveSockets_
+			<< " remaining)" << std::endl;
 }
 
 std::string ZMQHandler::GetEBL0Address(int threadNum) {
@@ -93,4 +93,22 @@ void ZMQHandler::ConnectInproc(zmq::socket_t* socket, std::string address) {
 	connectMutex_.unlock();
 }
 
-} /* namespace na62 */
+void ZMQHandler::sendMessage(zmq::socket_t* socket,
+		zmq::message_t&& msg, int flags) {
+	while (ZMQHandler::IsRunning()) {
+		try {
+			socket->send(msg, flags);
+			break;
+		} catch (const zmq::error_t& ex) {
+			if (ex.num() != EINTR) { // try again if EINTR (signal caught)
+				LOG(ERROR)<<ex.what();
+
+				ZMQHandler::DestroySocket (socket);
+				return;
+			}
+		}
+	}
+}
+
+}
+/* namespace na62 */

@@ -65,7 +65,7 @@ void DimListener::infoHandler() {
 		for (auto callback : eobCallbacks) {
 			callback(sob);
 		}
-		std::cout << "Updating EOB timestamp to " << sob << std::endl;
+		std::cout << "Updating SOB timestamp to " << sob << std::endl;
 	} else if (curr == &runNumber_) {
 		uint runNumber = runNumber_.getInt();
 		for (auto callback : eobCallbacks) {

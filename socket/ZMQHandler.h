@@ -12,6 +12,7 @@
 #include <cstdbool>
 #include <set>
 #include <string>
+#include <zmq.hpp>
 
 namespace boost {
 class mutex;
@@ -49,6 +50,8 @@ public:
 	 * Binds the socket to the specified address and stores the enables connections to this address
 	 */
 	static void BindInproc(zmq::socket_t* socket, std::string address);
+
+	static void sendMessage(zmq::socket_t* socket, zmq::message_t&& msg, int flags=0);
 
 	/*
 	 * Connects to the specified address as soon as the address has been bound
