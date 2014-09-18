@@ -65,9 +65,9 @@ bool IPCHandler::connectClient() {
 	statisticsSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
 	commandReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
 
-	commandReceiver_->connect(CommandAddress);
 	stateSender_->connect(StateAddress);
-	statisticsSender_->bind(StatisticsAddressServer);
+	statisticsSender_->connect(StatisticsAddress);
+	commandReceiver_->bind(CommandAddressServer);
 
 	return true;
 }
