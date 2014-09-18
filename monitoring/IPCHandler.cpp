@@ -22,9 +22,9 @@
 /*
  * IPC seems not to be compatible with dim -> use tcp on localhost
  */
-#define StateAddress "tcp://172.0.0.1:4500"
-#define StatisticsAddress "tcp://172.0.0.1:4501"
-#define CommandAddress "tcp://172.0.0.1:4502"
+#define StateAddress "tcp://127.0.0.1:4500"
+#define StatisticsAddress "tcp://127.0.0.1:4501"
+#define CommandAddress "tcp://127.0.0.1:4502"
 
 #define StateAddressServer "tcp://*:4500"
 #define StatisticsAddressServer "tcp://*:4501"
@@ -77,8 +77,8 @@ bool IPCHandler::bindServer() {
 		return false;
 	}
 
-	statisticsReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
 	stateReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
+	statisticsReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
 	commandSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
 
 	stateReceiver_->bind(StateAddressServer);
