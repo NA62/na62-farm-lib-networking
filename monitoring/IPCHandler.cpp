@@ -19,10 +19,20 @@
 
 #include "../socket/ZMQHandler.h"
 
-#define StateAddress "ipc:///tmp/na62-farm-state"
-#define StatisticsAddress "ipc:///tmp/na62-farm-statistics"
-#define CommandAddress "ipc:///tmp/na62-farm-command"
+/*
+ * IPC seems not to be compatible with dim -> use tcp on localhost
+ */
+#define StateAddress "tcp://172.0.0.1:4500"
+#define StatisticsAddress "tcp://172.0.0.1:4501"
+#define CommandAddress "tcp://172.0.0.1:4502"
 
+#define StateAddressServer "tcp://*:4500"
+#define StatisticsAddressServer "tcp://*:4501"
+#define CommandAddressServer "tcp://*:4502"
+
+//#define StateAddress "ipc:///tmp/na62-farm-state"
+//#define StatisticsAddress "ipc:///tmp/na62-farm-statistics"
+//#define CommandAddress "ipc:///tmp/na62-farm-command"
 namespace na62 {
 
 STATE IPCHandler::currentState = OFF;
@@ -57,7 +67,7 @@ bool IPCHandler::connectClient() {
 
 	commandReceiver_->connect(CommandAddress);
 	stateSender_->connect(StateAddress);
-	statisticsSender_->connect(StatisticsAddress);
+	statisticsSender_->bind(StatisticsAddressServer);
 
 	return true;
 }
@@ -71,9 +81,9 @@ bool IPCHandler::bindServer() {
 	stateReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
 	commandSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
 
-	stateReceiver_->bind(StateAddress);
-	statisticsReceiver_->bind(StatisticsAddress);
-	commandSender_->bind(CommandAddress);
+	stateReceiver_->bind(StateAddressServer);
+	statisticsReceiver_->bind(StatisticsAddressServer);
+	commandSender_->connect(CommandAddress);
 
 	return true;
 }
@@ -147,9 +157,10 @@ void IPCHandler::sendCommand(std::string command) {
 		return;
 	}
 	try {
-		commandSender_->send((const void*) command.data(),
-				(size_t) command.length());
-
+		if (commandSender_->connected()) {
+			commandSender_->send((const void*) command.data(),
+					(size_t) command.length());
+		}
 	} catch (const zmq::error_t& ex) {
 		if (ex.num() != EINTR) { // try again if EINTR (signal caught)
 			ZMQHandler::DestroySocket(commandSender_);

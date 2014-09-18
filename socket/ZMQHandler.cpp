@@ -46,6 +46,7 @@ zmq::socket_t* ZMQHandler::GenerateSocket(int socketType, int highWaterMark) {
 	socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
 	socket->setsockopt(ZMQ_SNDHWM, &highWaterMark, sizeof(highWaterMark));
+
 	numberOfActiveSockets_++;
 	return socket;
 }
