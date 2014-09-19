@@ -101,6 +101,8 @@ UDP_HDR* EthernetUtils::GenerateUDP(const void* buffer, const char* dMacAddr, co
 	hdr->ip.protocol = IPPROTO_UDP;
 
 	memcpy(hdr->eth.ether_dhost, dMacAddr, ETH_ALEN);
+	delete[] dMacAddr;
+
 	memcpy(hdr->eth.ether_shost, NetworkHandler::GetMyMac().data(), ETH_ALEN);
 
 	hdr->ip.version = 4; // IP version
