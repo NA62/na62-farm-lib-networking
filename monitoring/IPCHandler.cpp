@@ -19,13 +19,16 @@
 
 #include "../socket/ZMQHandler.h"
 
+/*
+ * IPC seems not to be compatible with dim -> use tcp on localhost
+ */
+
 #define StateAddress "ipc:///tmp/na62-farm-state"
 #define StatisticsAddress "ipc:///tmp/na62-farm-statistics"
 #define CommandAddress "ipc:///tmp/na62-farm-command"
 
 namespace na62 {
 
-STATE IPCHandler::currentState = OFF;
 zmq::socket_t* IPCHandler::stateSender_ = nullptr;
 zmq::socket_t* IPCHandler::statisticsSender_ = nullptr;
 zmq::socket_t* IPCHandler::commandSender_ = nullptr;
@@ -55,9 +58,9 @@ bool IPCHandler::connectClient() {
 	statisticsSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
 	commandReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
 
-	commandReceiver_->connect(CommandAddress);
 	stateSender_->connect(StateAddress);
 	statisticsSender_->connect(StatisticsAddress);
+	commandReceiver_->bind(CommandAddress);
 
 	return true;
 }
@@ -67,13 +70,13 @@ bool IPCHandler::bindServer() {
 		return false;
 	}
 
-	statisticsReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
 	stateReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
+	statisticsReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
 	commandSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
 
 	stateReceiver_->bind(StateAddress);
 	statisticsReceiver_->bind(StatisticsAddress);
-	commandSender_->bind(CommandAddress);
+	commandSender_->connect(CommandAddress);
 
 	return true;
 }
@@ -86,14 +89,18 @@ void IPCHandler::setTimeout(int timeout) {
 		return;
 	}
 
-	statisticsReceiver_->setsockopt(ZMQ_RCVTIMEO, (const void*) &timeout,
-			(size_t) sizeof(timeout));
+	/*
+	 * Only let state socket sleep as we read all sockets in the same thread
+	 */
+	int statisticsTimeout = 1;
+	statisticsReceiver_->setsockopt(ZMQ_RCVTIMEO,
+			(const void*) &statisticsTimeout,
+			(size_t) sizeof(statisticsTimeout));
 	stateReceiver_->setsockopt(ZMQ_RCVTIMEO, (const void*) &timeout,
 			(size_t) sizeof(timeout));
 }
 
 void IPCHandler::updateState(STATE newState) {
-	currentState = newState;
 	if (!ZMQHandler::IsRunning()) {
 		return;
 	}
@@ -102,7 +109,7 @@ void IPCHandler::updateState(STATE newState) {
 		return;
 	}
 
-	stateSender_->send((const void*) &currentState, (size_t) sizeof(STATE));
+	stateSender_->send((const void*) &newState, (size_t) sizeof(STATE));
 }
 
 void IPCHandler::sendErrorMessage(std::string message) {
@@ -147,9 +154,10 @@ void IPCHandler::sendCommand(std::string command) {
 		return;
 	}
 	try {
-		commandSender_->send((const void*) command.data(),
-				(size_t) command.length());
-
+		if (commandSender_->connected()) {
+			commandSender_->send((const void*) command.data(),
+					(size_t) command.length());
+		}
 	} catch (const zmq::error_t& ex) {
 		if (ex.num() != EINTR) { // try again if EINTR (signal caught)
 			ZMQHandler::DestroySocket(commandSender_);

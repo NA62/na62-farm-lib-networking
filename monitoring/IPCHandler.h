@@ -53,8 +53,6 @@ private:
 	 */
 	static bool bindServer();
 
-	static STATE currentState;
-
 	static zmq::socket_t* stateSender_;
 	static zmq::socket_t* statisticsSender_;
 	static zmq::socket_t* commandSender_;
