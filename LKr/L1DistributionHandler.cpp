@@ -309,7 +309,7 @@ void L1DistributionHandler::Async_SendMRP(
 	std::lock_guard<std::mutex> lock(sendMutex_);
 
 
-	vanillaMrpSender_->send_data(buff+sizeof(UDP_HDR), offset-sizeof(UDP_HDR));
+	vanillaMrpSender_->send_data(buff, offset);
 
 //	MRPQueue.push( { buff, offset, true });
 }
