@@ -9,13 +9,13 @@
 
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/date_time/time_duration.hpp>
-#include <boost/thread/locks.hpp>
-#include <boost/thread/pthread/thread_data.hpp>
+#include <boost/thread/thread.hpp>
 #include <glog/logging.h>
 #include <zmq.h>
 #include <zmq.hpp>
 #include <iostream>
 #include <map>
+#include <mutex>
 
 namespace na62 {
 
@@ -23,7 +23,7 @@ zmq::context_t* ZMQHandler::context_;
 bool ZMQHandler::running_ = true;
 std::atomic<int> ZMQHandler::numberOfActiveSockets_;
 std::set<std::string> ZMQHandler::boundAddresses_;
-boost::mutex ZMQHandler::connectMutex_;
+std::mutex ZMQHandler::connectMutex_;
 
 void ZMQHandler::Initialize(const int numberOfIOThreads) {
 	context_ = new zmq::context_t(numberOfIOThreads);
@@ -78,7 +78,7 @@ std::string ZMQHandler::GetEBLKrAddress(int threadNum) {
 void ZMQHandler::BindInproc(zmq::socket_t* socket, std::string address) {
 	socket->bind(address.c_str());
 
-	boost::lock_guard<boost::mutex> lock(connectMutex_);
+	std::lock_guard<std::mutex> lock(connectMutex_);
 	boundAddresses_.insert(address);
 }
 

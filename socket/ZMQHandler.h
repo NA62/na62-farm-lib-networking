@@ -14,7 +14,7 @@
 #include <string>
 #include <zmq.hpp>
 
-namespace boost {
+namespace std {
 class mutex;
 } /* namespace boost */
 
@@ -60,7 +60,7 @@ public:
 private:
 	static zmq::context_t* context_;
 	static std::set<std::string> boundAddresses_;
-	static boost::mutex connectMutex_;
+	static std::mutex connectMutex_;
 	static bool running_;
 	static std::atomic<int> numberOfActiveSockets_;
 };
