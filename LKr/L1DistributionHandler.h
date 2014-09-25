@@ -23,6 +23,7 @@
 #include <tbb/mutex.h>
 
 #include "MRP.h"
+#include "VanillaMrpSender.h"
 #include "../socket/EthernetUtils.h"
 
 namespace na62 {
@@ -89,6 +90,8 @@ private:
 	static uint MAX_TRIGGERS_PER_L1MRP;
 	static uint NUMBER_OF_EBS;
 	static uint MIN_USEC_BETWEEN_L1_REQUESTS;
+
+	static VanillaMrpSender* vanillaMrpSender_;
 };
 
 } /* namespace cream */
