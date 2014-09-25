@@ -52,6 +52,8 @@ std::mutex L1DistributionHandler::sendMutex_;
 
 boost::timer::cpu_timer L1DistributionHandler::MRPSendTimer_;
 
+VanillaMrpSender* L1DistributionHandler::vanillaMrpSender_=nullptr;
+
 struct cream::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event,
 bool zSuppressed) {
 	struct cream::TRIGGER_RAW_HDR* triggerHDR =
@@ -137,6 +139,7 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 	CREAM_UnicastRequestHdr->MRP_HDR.reserved = 0;
 
 //	EthernetUtils::GenerateUDP(CREAM_RequestBuff, EthernetUtils::StringToMAC("00:15:17:b2:26:fa"), "10.0.4.3", sPort, dPort);
+	vanillaMrpSender_ = new VanillaMrpSender(multicastGroupName, destinationPort);
 }
 
 void L1DistributionHandler::thread() {
@@ -304,7 +307,11 @@ void L1DistributionHandler::Async_SendMRP(
 			&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
 	std::lock_guard<std::mutex> lock(sendMutex_);
-	MRPQueue.push( { buff, offset, true });
+
+
+	vanillaMrpSender_->send_data(buff+sizeof(UDP_HDR), offset-sizeof(UDP_HDR));
+
+//	MRPQueue.push( { buff, offset, true });
 }
 }
 /* namespace cream */
