@@ -177,14 +177,14 @@ int NetworkHandler::SendFrameConcurrently(uint16_t threadNum, const u_char* pkt,
 		memset(buff + pktLen, 0, 64 - pktLen);
 		pktLen = 64;
 
-		int rc = queueRings_[threadNum % numberOfQueues_]->send_packet(
-				(char*) buff, pktLen, flush, activePoll);
+		int rc = queueRings_[threadNum]->send_packet((char*) buff, pktLen,
+				flush, activePoll);
 		delete[] buff;
 		return rc;
 	}
 
-	return queueRings_[threadNum % numberOfQueues_]->send_packet((char*) pkt,
-			pktLen, flush, activePoll);
+	return queueRings_[threadNum]->send_packet((char*) pkt, pktLen, flush,
+			activePoll);
 }
 
 uint16_t NetworkHandler::GetNumberOfQueues() {
