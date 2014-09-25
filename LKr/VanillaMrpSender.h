@@ -29,7 +29,6 @@ public:
 	VanillaMrpSender(const std::string multicastAddr, const ushort dstPort) {
 		struct ifreq if_idx;
 		struct ifreq if_mac;
-		int tx_len = 0;
 		std::string ifName = "em1";
 
 		/* Open RAW socket to send on */
@@ -60,12 +59,6 @@ public:
 		const uint32_t multicastGroup = inet_addr(multicastAddr.data());
 		char* dstMac = EthernetUtils::GenerateMulticastMac(multicastGroup);
 		memcpy(socket_address.sll_addr, dstMac, 6);
-//		socket_address.sll_addr[0] = MY_DEST_MAC0;
-//		socket_address.sll_addr[1] = MY_DEST_MAC1;
-//		socket_address.sll_addr[2] = MY_DEST_MAC2;
-//		socket_address.sll_addr[3] = MY_DEST_MAC3;
-//		socket_address.sll_addr[4] = MY_DEST_MAC4;
-//		socket_address.sll_addr[5] = MY_DEST_MAC5;
 	}
 
 	~VanillaMrpSender() {
