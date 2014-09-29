@@ -35,6 +35,24 @@ struct UDP_HDR { // 42 byte
 		udp.len = htons(sizeof(struct udphdr) + dataLength);
 	}
 
+	inline bool isFragment() {
+		/*
+		 * frag_off stores offset or "more fragments flag"
+		 */
+		return (ip.frag_off & IP_OFFMASK) || (ip.frag_off & IP_MF);
+	}
+
+	inline uint16_t getFragmentOffsetInBytes() {
+		/*
+		 * frag_off & IP_OFFMASK stores offset in number of 64-bit words
+		 */
+		return (ntohs(ip.frag_off) & IP_OFFMASK) * 8;
+	}
+
+	inline bool isMoreFragments() {
+		return (ntohs(ip.frag_off) & IP_MF);
+	}
+
 	// disallow padding via "__attribute__ ((__packed__))"
 }__attribute__ ((__packed__));
 
@@ -59,7 +77,6 @@ struct ARP_HDR {
 	uint32_t targetIPAddr; /* Target IP address.  */
 	// disallow padding via "__attribute__ ((__packed__))"
 }__attribute__ ((__packed__));
-
 
 struct EOB_FULL_FRAME {
 	struct UDP_HDR udp;
