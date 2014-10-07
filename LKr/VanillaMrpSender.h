@@ -64,14 +64,11 @@ public:
 	~VanillaMrpSender() {
 	}
 
-public:
 	void send_data(const char* data, const uint dataLength) {
 		if (sendto(sockfd, data, dataLength, 0,
 						(struct sockaddr*) &socket_address, sizeof(struct sockaddr_ll))
 						< 0)
 					printf("Send 	\n");
-
-		delete[] data;
 	}
 
 private:
