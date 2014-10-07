@@ -29,7 +29,7 @@ public:
 	VanillaMrpSender(const std::string multicastAddr, const ushort dstPort) {
 		struct ifreq if_idx;
 		struct ifreq if_mac;
-		std::string ifName = "em1";
+		std::string ifName = "eth0";
 
 		/* Open RAW socket to send on */
 		if ((sockfd = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW)) == -1) {
@@ -69,7 +69,7 @@ public:
 		if (sendto(sockfd, data, dataLength, 0,
 						(struct sockaddr*) &socket_address, sizeof(struct sockaddr_ll))
 						< 0)
-					printf("Send failed\n");
+					printf("Send 	\n");
 
 		delete[] data;
 	}
