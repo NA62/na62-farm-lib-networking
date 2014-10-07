@@ -41,6 +41,10 @@ public:
 	void registerBurstNumberListener(std::function<void(uint)> callback) {
 		burstNumberCallbacks.push_back(std::move(callback));
 	}
+	void registerNextBurstNumberListener(std::function<void(uint)> callback) {
+		nextBurstNumberCallbacks.push_back(std::move(callback));
+	}
+
 
 	void startServer() {
 		thread = new std::thread([this]() {
@@ -52,7 +56,8 @@ public:
 private:
 	void infoHandler();
 
-	DimInfo burstNumber_;
+	DimInfo nextBurstNumber_; // Next burstID published at EOB
+	DimInfo burstNumber_; // Current burstID published at SOB
 	DimInfo runNumber_;
 	DimInfo SOB_TS_;
 	DimInfo EOB_TS_;
@@ -61,6 +66,7 @@ private:
 	std::vector<std::function<void(uint)>> sobCallbacks;
 	std::vector<std::function<void(uint)>> runNumberCallbacks;
 	std::vector<std::function<void(uint)>> burstNumberCallbacks;
+	std::vector<std::function<void(uint)>> nextBurstNumberCallbacks;
 
 	std::thread* thread;
 };
