@@ -22,7 +22,8 @@ namespace na62 {
 namespace dim {
 
 DimListener::DimListener() :
-		burstNumber_("RunControl/BurstNumber", -1, this), runNumber_(
+		nextBurstNumber_("RunControl/NextBurstNumber", -1, this), burstNumber_(
+				"RunControl/BurstNumber", -1, this), runNumber_(
 				"RunControl/RunNumber", -1, this), SOB_TS_("NA62/Timing/SOB", 0,
 				this), EOB_TS_("NA62/Timing/EOB", 0, this) {
 
@@ -78,6 +79,12 @@ void DimListener::infoHandler() {
 			callback(burstID);
 		}
 		std::cout << "Updating burstID to " << burstID << std::endl;
+	} else if (curr == &nextBurstNumber_) {
+		uint burstID = nextBurstNumber_.getInt();
+		for (auto callback : nextBurstNumberCallbacks) {
+			callback(burstID);
+		}
+		std::cout << "Updating nextBurstID to " << burstID << std::endl;
 	}
 }
 
