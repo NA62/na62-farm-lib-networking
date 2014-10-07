@@ -265,6 +265,7 @@ void L1DistributionHandler::sendMRP(const struct cream::MRP_FRAME_HDR* dataHDR,
 
 	L1TriggersSent += dataHDRToBeSent->MRP_HDR.getNumberOfTriggers();
 	L1MRPsSent++;
+	delete[] buff;
 }
 }
 /* namespace cream */

@@ -36,7 +36,6 @@ public:
 public:
 	void send_data(const char* data, const uint dataLength) {
 		socket.send_to(boost::asio::buffer(data, dataLength), *dstEndpoint_);
-		delete[] data;
 	}
 
 private:
