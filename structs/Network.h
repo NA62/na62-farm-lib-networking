@@ -39,7 +39,7 @@ struct UDP_HDR { // 42 byte
 		/*
 		 * frag_off stores offset or "more fragments flag"
 		 */
-		return (ip.frag_off & IP_OFFMASK) || (ip.frag_off & IP_MF);
+		return ntohs(ip.frag_off) & (IP_OFFMASK | IP_MF);
 	}
 
 	inline uint16_t getFragmentOffsetInBytes() {
