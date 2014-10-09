@@ -22,11 +22,17 @@
 /*
  * IPC seems not to be compatible with dim -> use tcp on localhost
  */
+#define StateAddress "tcp://127.0.0.1:4500"
+#define StatisticsAddress "tcp://127.0.0.1:4501"
+#define CommandAddress "tcp://127.0.0.1:4502"
 
-#define StateAddress "ipc:///tmp/na62-farm-state"
-#define StatisticsAddress "ipc:///tmp/na62-farm-statistics"
-#define CommandAddress "ipc:///tmp/na62-farm-command"
+#define StateAddressServer "tcp://*:4500"
+#define StatisticsAddressServer "tcp://*:4501"
+#define CommandAddressServer "tcp://*:4502"
 
+//#define StateAddress "ipc:///tmp/na62-farm-state"
+//#define StatisticsAddress "ipc:///tmp/na62-farm-statistics"
+//#define CommandAddress "ipc:///tmp/na62-farm-command"
 namespace na62 {
 
 zmq::socket_t* IPCHandler::stateSender_ = nullptr;
@@ -60,7 +66,7 @@ bool IPCHandler::connectClient() {
 
 	stateSender_->connect(StateAddress);
 	statisticsSender_->connect(StatisticsAddress);
-	commandReceiver_->bind(CommandAddress);
+	commandReceiver_->bind(CommandAddressServer);
 
 	return true;
 }
@@ -74,8 +80,8 @@ bool IPCHandler::bindServer() {
 	statisticsReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
 	commandSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
 
-	stateReceiver_->bind(StateAddress);
-	statisticsReceiver_->bind(StatisticsAddress);
+	stateReceiver_->bind(StateAddressServer);
+	statisticsReceiver_->bind(StatisticsAddressServer);
 	commandSender_->connect(CommandAddress);
 
 	return true;
@@ -89,13 +95,8 @@ void IPCHandler::setTimeout(int timeout) {
 		return;
 	}
 
-	/*
-	 * Only let state socket sleep as we read all sockets in the same thread
-	 */
-	int statisticsTimeout = 1;
-	statisticsReceiver_->setsockopt(ZMQ_RCVTIMEO,
-			(const void*) &statisticsTimeout,
-			(size_t) sizeof(statisticsTimeout));
+	statisticsReceiver_->setsockopt(ZMQ_RCVTIMEO, (const void*) &timeout,
+			(size_t) sizeof(timeout));
 	stateReceiver_->setsockopt(ZMQ_RCVTIMEO, (const void*) &timeout,
 			(size_t) sizeof(timeout));
 }
