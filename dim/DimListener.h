@@ -28,6 +28,7 @@ public:
 	uint getSobTimeStamp();
 	uint getRunNumber();
 	uint getBurstNumber();
+	uint getNextBurstNumber();
 
 	void registerEobListener(std::function<void(uint)> callback) {
 		eobCallbacks.push_back(std::move(callback));

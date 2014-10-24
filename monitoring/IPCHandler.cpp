@@ -133,8 +133,9 @@ void IPCHandler::sendStatistics(std::string name, std::string values) {
 	std::string message = name + ":" + values;
 
 	try {
-		statisticsSender_->send((const void*) message.data(),
-				(size_t) message.length());
+		zmq::message_t m(message.size());
+		memcpy(m.data(), message.data(), message.size());
+		statisticsSender_->send(m);
 	} catch (const zmq::error_t& ex) {
 	}
 }
