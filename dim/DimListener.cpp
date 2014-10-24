@@ -25,7 +25,7 @@ DimListener::DimListener() :
 		nextBurstNumber_("RunControl/NextBurstNumber", -1, this), burstNumber_(
 				"RunControl/BurstNumber", -1, this), runNumber_(
 				"RunControl/RunNumber", -1, this), SOB_TS_("NA62/Timing/SOB", 0,
-				this), EOB_TS_("NA62/Timing/EOB", 0, this) {
+				this), EOB_TS_("NA62/Timing/EOB", 0, this) , thread(nullptr){
 
 //	int runNumber = 0;
 //	if (runNumber_.getSize() <= 0) {
@@ -51,6 +51,10 @@ uint DimListener::getRunNumber() {
 
 uint DimListener::getBurstNumber() {
 	return burstNumber_.getInt();
+}
+
+uint DimListener::getNextBurstNumber() {
+	return nextBurstNumber_.getInt();
 }
 
 void DimListener::infoHandler() {
