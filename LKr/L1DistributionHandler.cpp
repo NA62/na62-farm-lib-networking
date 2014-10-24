@@ -260,8 +260,8 @@ void L1DistributionHandler::sendMRP(const struct cream::MRP_FRAME_HDR* dataHDR,
 	dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
 			&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
-	vanillaMrpSender_->send_data(buff + sizeof(UDP_HDR),
-			offset - sizeof(UDP_HDR));
+	vanillaMrpSender_->send_data(buff,
+			offset);
 
 	L1TriggersSent += dataHDRToBeSent->MRP_HDR.getNumberOfTriggers();
 	L1MRPsSent++;
