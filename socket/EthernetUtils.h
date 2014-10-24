@@ -108,12 +108,12 @@ public:
 		macAddress[2] = 0x5e;
 
 		/*
-		 * The we have one Zero bit and the last 23 bits of the multicast group -> &0xffff7f
+		 * The we have one Zero bit and the last 23 bits of the multicast group -> &0xffff7f00
 		 */
-		uint32_t addr = ntohl(multicastGroup);
-		uint32_t multicastIP = (addr & 0xffff7f);
+		uint32_t addr = (multicastGroup);
+		uint32_t multicastIP = (addr & 0xffff7f00);
 
-		memcpy(&macAddress[0] + 3, ((char*) &multicastIP) + 1, 3);
+		memcpy(&macAddress[0] + 3, ((char*) &multicastIP)+1 , 3);
 
 		return macAddress;
 	}
