@@ -41,6 +41,8 @@ public:
 
 	static void setTimeout(int timeout);
 	static void shutDown();
+
+	static bool isRunning();
 private:
 
 	/**

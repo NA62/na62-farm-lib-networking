@@ -55,6 +55,10 @@ void IPCHandler::shutDown() {
 	ZMQHandler::DestroySocket(commandReceiver_);
 }
 
+bool IPCHandler::isRunning(){
+	return ZMQHandler::IsRunning();
+}
+
 bool IPCHandler::connectClient() {
 	if (!ZMQHandler::IsRunning()) {
 		return false;
