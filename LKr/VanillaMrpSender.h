@@ -27,6 +27,13 @@ public:
 		using boost::asio::ip::udp;
 
 		socket.open(boost::asio::ip::udp::v4());
+
+		/*
+		 * Set TTL
+		 */
+		boost::asio::ip::multicast::hops option(10);
+		socket.set_option(option);
+
 		dstEndpoint_ = new udp::endpoint(address, dstPort);
 	}
 
