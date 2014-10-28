@@ -18,7 +18,6 @@
 #include <boost/timer/timer.hpp>
 #include <mutex>
 #include <utils/AExecutable.h>
-#include <utils/ThreadsafeQueue.h>
 #include <tbb/spin_mutex.h>
 #include <tbb/mutex.h>
 
@@ -69,8 +68,9 @@ private:
 	/*
 	 * Queues all mutlicast MRPs that should be sent. The aggregator is used to synchronize the access on that object
 	 */
-	static std::priority_queue < struct TRIGGER_RAW_HDR*, std::vector < struct TRIGGER_RAW_HDR* > > multicastMRPQueue;
-	static tbb::spin_mutex multicastMRPQueue_mutex; // TODO: use tbb::aggregator instead of mutex
+	static const uint numberOfQueues = 32;
+	static std::priority_queue < struct TRIGGER_RAW_HDR*, std::vector < struct TRIGGER_RAW_HDR* > > multicastMRPQueue[numberOfQueues];
+	static tbb::spin_mutex multicastMRPQueue_mutex[numberOfQueues]; // TODO: use tbb::aggregator instead of mutex
 
 //	static ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* unicastMRPWithIPsQueues;
 

@@ -32,9 +32,10 @@
 
 namespace na62 {
 namespace cream {
+const uint L1DistributionHandler::numberOfQueues;
 std::priority_queue<struct TRIGGER_RAW_HDR*,
-		std::vector<struct TRIGGER_RAW_HDR*> > L1DistributionHandler::multicastMRPQueue;
-tbb::spin_mutex L1DistributionHandler::multicastMRPQueue_mutex;
+		std::vector<struct TRIGGER_RAW_HDR*> > L1DistributionHandler::multicastMRPQueue[];
+tbb::spin_mutex L1DistributionHandler::multicastMRPQueue_mutex[];
 
 //ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* L1DistributionHandler::unicastMRPWithIPsQueues;
 
@@ -80,8 +81,10 @@ bool zSuppressed) {
 	/*
 	 * FIXME: The blocking here is quite bad as this method is called for every accepted event
 	 */
-	tbb::spin_mutex::scoped_lock my_lock(multicastMRPQueue_mutex);
-	multicastMRPQueue.push(triggerHDR);
+	tbb::spin_mutex::scoped_lock my_lock(
+			multicastMRPQueue_mutex[triggerHDR->eventNumber % numberOfQueues]);
+	multicastMRPQueue[triggerHDR->eventNumber % numberOfQueues].push(
+			triggerHDR);
 }
 
 void L1DistributionHandler::Async_RequestLKRDataUnicast(const Event *event,
@@ -153,14 +156,23 @@ void L1DistributionHandler::thread() {
 		/*
 		 * pop some elements from the queue
 		 */
-		multicastMRPQueue_mutex.lock();
-		while (multicastRequests.size() < MAX_TRIGGERS_PER_L1MRP
-				&& !multicastMRPQueue.empty()) {
-			struct TRIGGER_RAW_HDR* hdr = multicastMRPQueue.top();
-			multicastMRPQueue.pop();
-			multicastRequests.push_back(hdr);
+
+		for (uint queueNum = 0; queueNum != numberOfQueues; queueNum++) {
+			{
+				tbb::spin_mutex::scoped_lock my_lock(
+						multicastMRPQueue_mutex[queueNum]);
+				while (multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP
+						&& !multicastMRPQueue[queueNum].empty()) {
+					struct TRIGGER_RAW_HDR* hdr =
+							multicastMRPQueue[queueNum].top();
+					multicastMRPQueue[queueNum].pop();
+					multicastRequests.push_back(hdr);
+				}
+			}
+			if (multicastRequests.size() == MAX_TRIGGERS_PER_L1MRP) {
+				break;
+			}
 		}
-		multicastMRPQueue_mutex.unlock();
 
 		/*
 		 * Now send all unicast requests
