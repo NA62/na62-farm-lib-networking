@@ -152,8 +152,8 @@ int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
 	int result = queueRings_[queueNumber]->get_next_packet(hdr, (char**) pkt,
 			pkt_len, wait_for_incoming_packet);
 	if (result == 1) {
-		bytesReceived_ += hdr->len;
-		framesReceived_++;
+		bytesReceived_.fetch_add(hdr->len, std::memory_order_relaxed);
+		framesReceived_.fetch_add(1, std::memory_order_relaxed);
 	}
 	return result;
 }
