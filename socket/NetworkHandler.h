@@ -17,8 +17,7 @@
 #include <queue>
 #include <string>
 #include <vector>
-#include <tbb/spin_mutex.h>
-#include <tbb/mutex.h>
+#include <tbb/concurrent_queue.h>
 
 #include "EthernetUtils.h"
 #include <pfring.h>
@@ -76,7 +75,15 @@ public:
 		return framesReceived_;
 	}
 
+	static inline uint64_t GetFramesSent(){
+		return framesSent_;
+	}
+
 	static uint64_t GetFramesDropped();
+
+	static uint getNumberOfEnqueuedFrames(){
+		return asyncData_.unsafe_size();
+	}
 
 private:
 	static std::vector<char> myMac_;
@@ -84,11 +91,11 @@ private:
 
 	static std::atomic<uint64_t> bytesReceived_;
 	static std::atomic<uint64_t> framesReceived_;
+	static std::atomic<uint64_t> framesSent_;
 	static uint16_t numberOfQueues_;
 	static std::string deviceName_;
 
-	static tbb::spin_mutex asyncDataMutex_;
-	static std::queue<DataContainer> asyncData_;
+	static tbb::concurrent_queue<DataContainer> asyncData_;
 
 	/*
 	 * The thread will send gratuitous arp requests

@@ -33,6 +33,10 @@ struct DataContainer {
 	char * data;
 	uint16_t length;bool ownerMayFreeData;
 
+	DataContainer() :
+			data(nullptr), length(0), ownerMayFreeData(false) {
+	}
+
 	DataContainer(char* _data, uint16_t _length, bool _ownerMayFreeData) :
 			data(_data), length(_length), ownerMayFreeData(_ownerMayFreeData) {
 	}
@@ -67,6 +71,18 @@ struct DataContainer {
 
 			other.data = nullptr;
 			other.length = 0;
+		}
+		return *this;
+	}
+
+	/**
+	 * Move assignment operator
+	 */
+	DataContainer& operator=(DataContainer& other) {
+		if (&other != this) {
+			data = other.data;
+			length = other.length;
+			ownerMayFreeData = other.ownerMayFreeData;
 		}
 		return *this;
 	}
