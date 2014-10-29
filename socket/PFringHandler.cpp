@@ -34,9 +34,9 @@ uint16_t NetworkHandler::numberOfQueues_;
 
 std::atomic<uint64_t> NetworkHandler::bytesReceived_(0);
 std::atomic<uint64_t> NetworkHandler::framesReceived_(0);
+std::atomic<uint64_t> NetworkHandler::framesSent_(0);
 std::string NetworkHandler::deviceName_ = "";
-tbb::spin_mutex NetworkHandler::asyncDataMutex_;
-std::queue<DataContainer> NetworkHandler::asyncData_;
+tbb::concurrent_queue<DataContainer> NetworkHandler::asyncData_;
 
 std::vector<char> NetworkHandler::myMac_;
 uint32_t NetworkHandler::myIP_;
@@ -123,26 +123,21 @@ uint64_t NetworkHandler::GetFramesDropped() {
 }
 
 void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
-	tbb::spin_mutex::scoped_lock my_lock(asyncDataMutex_);
 	asyncData_.push(std::move(data));
 }
 
 int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
-	if (asyncDataMutex_.try_lock()) {
-		if (!asyncData_.empty()) {
-			const DataContainer data = std::move(asyncData_.front());
-			asyncData_.pop();
-			asyncDataMutex_.unlock();
-			int bytes = SendFrameConcurrently(threadNum,
-					(const u_char*) data.data, data.length);
+	DataContainer data;
+	if (asyncData_.try_pop(data)) {
+		int bytes = SendFrameConcurrently(threadNum, (const u_char*) data.data,
+				data.length);
 
-			if (data.ownerMayFreeData) {
-				delete[] data.data;
-			}
-
-			return bytes;
+		if (data.ownerMayFreeData) {
+			delete[] data.data;
 		}
-		asyncDataMutex_.unlock();
+		framesSent_.fetch_add(1, std::memory_order_relaxed);
+
+		return bytes;
 	}
 	return 0;
 }
@@ -152,8 +147,8 @@ int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
 	int result = queueRings_[queueNumber]->get_next_packet(hdr, (char**) pkt,
 			pkt_len, wait_for_incoming_packet);
 	if (result == 1) {
-		bytesReceived_ += hdr->len;
-		framesReceived_++;
+		bytesReceived_.fetch_add(hdr->len, std::memory_order_relaxed);
+		framesReceived_.fetch_add(1, std::memory_order_relaxed);
 	}
 	return result;
 }

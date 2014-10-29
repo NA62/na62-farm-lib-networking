@@ -18,9 +18,10 @@
 #include <boost/timer/timer.hpp>
 #include <mutex>
 #include <utils/AExecutable.h>
-#include <utils/ThreadsafeQueue.h>
 #include <tbb/spin_mutex.h>
 #include <tbb/mutex.h>
+#include <tbb/concurrent_queue.h>
+#include <tbb/concurrent_vector.h>
 
 #include "MRP.h"
 #include "../socket/EthernetUtils.h"
@@ -46,12 +47,6 @@ public:
 		return L1DistributionHandler::L1MRPsSent;
 	}
 
-	/*
-	 * Should be called by the PacketHandler threads to actually send the queued MRPs
-	 * @return <true> in case a frame has been sent (and time has passed therefore)
-	 */
-	static bool DoSendMRP(const uint16_t threadNum);
-
 	static void Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 			uint minUsecBetweenL1Requests, std::string multicastGroupName,
 			uint sourcePort, uint destinationPort);
@@ -69,20 +64,13 @@ private:
 	/*
 	 * Queues all mutlicast MRPs that should be sent. The aggregator is used to synchronize the access on that object
 	 */
-	static std::priority_queue < struct TRIGGER_RAW_HDR*, std::vector < struct TRIGGER_RAW_HDR* > > multicastMRPQueue;
-	static tbb::spin_mutex multicastMRPQueue_mutex; // TODO: use tbb::aggregator instead of mutex
-
-//	static ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* unicastMRPWithIPsQueues;
+	static tbb::concurrent_queue<struct TRIGGER_RAW_HDR*> multicastMRPQueue;
 
 	static struct cream::MRP_FRAME_HDR* CREAM_MulticastRequestHdr;
 	static struct cream::MRP_FRAME_HDR* CREAM_UnicastRequestHdr;
 
 	static uint64_t L1TriggersSent;
 	static uint64_t L1MRPsSent;
-
-	static std::queue<DataContainer> MRPQueue;
-
-	static std::mutex sendMutex_;
 
 	static boost::timer::cpu_timer MRPSendTimer_;
 
