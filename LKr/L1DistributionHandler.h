@@ -72,8 +72,6 @@ private:
 	static uint64_t L1TriggersSent;
 	static uint64_t L1MRPsSent;
 
-	static boost::timer::cpu_timer MRPSendTimer_;
-
 	static uint MAX_TRIGGERS_PER_L1MRP;
 	static uint NUMBER_OF_EBS;
 	static uint MIN_USEC_BETWEEN_L1_REQUESTS;

@@ -8,8 +8,6 @@
 #include "L1DistributionHandler.h"
 
 #include <arpa/inet.h>
-#include <boost/date_time/posix_time/posix_time_duration.hpp>
-#include <boost/date_time/time_duration.hpp>
 #include <boost/thread/pthread/thread_data.hpp>
 #include <eventBuilding/Event.h>
 #include <eventBuilding/SourceIDManager.h>
@@ -44,8 +42,6 @@ uint64_t L1DistributionHandler::L1MRPsSent = 0;
 uint L1DistributionHandler::NUMBER_OF_EBS = 0;
 uint L1DistributionHandler::MAX_TRIGGERS_PER_L1MRP = 0;
 uint L1DistributionHandler::MIN_USEC_BETWEEN_L1_REQUESTS = 0;
-
-boost::timer::cpu_timer L1DistributionHandler::MRPSendTimer_;
 
 struct cream::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event,
 bool zSuppressed) {
