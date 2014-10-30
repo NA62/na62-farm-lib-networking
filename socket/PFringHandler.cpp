@@ -32,11 +32,15 @@
 namespace na62 {
 uint16_t NetworkHandler::numberOfQueues_;
 
+/*
+ * TODO: use one variable per queue instead of an atomic and sum up in the monitor connector
+ */
 std::atomic<uint64_t> NetworkHandler::bytesReceived_(0);
 std::atomic<uint64_t> NetworkHandler::framesReceived_(0);
 std::atomic<uint64_t> NetworkHandler::framesSent_(0);
+
 std::string NetworkHandler::deviceName_ = "";
-tbb::concurrent_queue<DataContainer> NetworkHandler::asyncData_;
+tbb::concurrent_bounded_queue<DataContainer> NetworkHandler::asyncData_;
 
 std::vector<char> NetworkHandler::myMac_;
 uint32_t NetworkHandler::myIP_;
@@ -84,6 +88,8 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 			exit(1);
 		}
 	}
+
+	asyncData_.set_capacity(10);
 }
 
 NetworkHandler::~NetworkHandler() {
@@ -99,7 +105,7 @@ void NetworkHandler::thread() {
 
 	while (true) {
 		AsyncSendFrame(std::move(arp));
-		boost::this_thread::sleep(boost::posix_time::seconds(60));
+		boost::this_thread::sleep(boost::posix_time::seconds(10));
 	}
 }
 
@@ -135,7 +141,6 @@ int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
 		if (data.ownerMayFreeData) {
 			delete[] data.data;
 		}
-		framesSent_.fetch_add(1, std::memory_order_relaxed);
 
 		return bytes;
 	}
@@ -159,18 +164,19 @@ std::string NetworkHandler::GetDeviceName() {
 
 int NetworkHandler::SendFrameConcurrently(uint16_t threadNum, const u_char* pkt,
 		u_int pktLen, bool flush, bool activePoll) {
+	framesSent_.fetch_add(1, std::memory_order_relaxed);
 	/*
 	 * Check if an Ethernet trailer is needed
 	 */
-	if (pktLen < 64) {
+	if (pktLen < 60) {
 		/*
 		 * TODO: using tc_malloc pkt  will already be 64 Bytes long: no need to create new one! Just check it's length...
 		 */
-		char* buff = new char[64];
+		char* buff = new char[60];
 		memcpy(buff, pkt, pktLen);
 
-		memset(buff + pktLen, 0, 64 - pktLen);
-		pktLen = 64;
+		memset(buff + pktLen, 0, 60 - pktLen);
+		pktLen = 60;
 
 		int rc = queueRings_[threadNum]->send_packet((char*) buff, pktLen,
 				flush, activePoll);

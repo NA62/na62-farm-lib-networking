@@ -14,7 +14,6 @@
 #include <atomic>
 #include <cstdbool>
 #include <cstdint>
-#include <queue>
 #include <string>
 #include <vector>
 #include <tbb/concurrent_queue.h>
@@ -82,7 +81,7 @@ public:
 	static uint64_t GetFramesDropped();
 
 	static uint getNumberOfEnqueuedFrames(){
-		return asyncData_.unsafe_size();
+		return asyncData_.size();
 	}
 
 private:
@@ -95,7 +94,7 @@ private:
 	static uint16_t numberOfQueues_;
 	static std::string deviceName_;
 
-	static tbb::concurrent_queue<DataContainer> asyncData_;
+	static tbb::concurrent_bounded_queue<DataContainer> asyncData_;
 
 	/*
 	 * The thread will send gratuitous arp requests
