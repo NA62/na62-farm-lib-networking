@@ -29,10 +29,10 @@ namespace na62 {
 
 	std::atomic<uint64_t> NetworkHandler::bytesReceived_(0);
 	std::atomic<uint64_t> NetworkHandler::framesReceived_(0);
+	std::atomic<uint64_t> NetworkHandler::framesSent_(0);
 
 	std::string NetworkHandler::deviceName_ = "";
-	tbb::spin_mutex NetworkHandler::asyncDataMutex_;
-	std::queue<DataContainer> NetworkHandler::asyncData_;
+	tbb::concurrent_queue<DataContainer> NetworkHandler::asyncData_;
 
 	static int socket_;
 	static struct sockaddr_ll socket_address_;
@@ -59,7 +59,9 @@ namespace na62 {
 			return;
 		}
 
-		/* Set interface to promiscuous mode - do we need to do this every time? */
+		/*
+		 * Set interface to promiscuous mode
+		 */
 		strncpy(ifopts.ifr_name, deviceName.c_str(), deviceName.length() - 1);
 		ioctl(socket_, SIOCGIFFLAGS, &ifopts);
 		ifopts.ifr_flags |= IFF_PROMISC;
@@ -149,8 +151,10 @@ namespace na62 {
 		return hdr->len;
 	}
 
-	int NetworkHandler::SendFrameConcurrently(uint16_t threadNum,
-			const u_char *pkt, u_int pktLen, bool flush, bool activePoll) {
+	int NetworkHandler::SendFrameConcurrently(uint16_t threadNum, const u_char *pkt,
+			u_int pktLen, bool flush, bool activePoll) {
+
+		framesSent_.fetch_add(1, std::memory_order_relaxed);
 
 		/* Send packet */
 		if (sendto(socket_, (void*) pkt, pktLen, 0,
@@ -160,27 +164,27 @@ namespace na62 {
 		return pktLen;
 	}
 
+	uint64_t NetworkHandler::GetFramesDropped() {
+		return 0;
+	}
+
 	void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
-		tbb::spin_mutex::scoped_lock my_lock(asyncDataMutex_);
 		asyncData_.push(data);
 	}
 
 	int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
-		asyncDataMutex_.lock();
-		if (!asyncData_.empty()) {
-			const DataContainer data = asyncData_.front();
-			asyncData_.pop();
-			asyncDataMutex_.unlock();
-			SendFrameConcurrently(threadNum, (const u_char*) data.data,
+		DataContainer data;
+		if (asyncData_.try_pop(data)) {
+			int bytes = SendFrameConcurrently(threadNum, (const u_char*) data.data,
 					data.length);
+
 			if (data.ownerMayFreeData) {
 				delete[] data.data;
 			}
+			framesSent_.fetch_add(1, std::memory_order_relaxed);
 
-			return data.length;
+			return bytes;
 		}
-
-		asyncDataMutex_.unlock();
 		return 0;
 	}
 
