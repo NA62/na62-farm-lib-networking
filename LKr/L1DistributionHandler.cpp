@@ -181,18 +181,16 @@ void L1DistributionHandler::thread() {
 //			}
 //		}
 		if (multicastRequests.size() > 0) {
-			/*
-			 * Do not send if there's still a MRP in the queue and the current list is not full
-			 */
-			if (NetworkHandler::getNumberOfEnqueuedSendFrames() != 0
-					&& multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP) {
-				// sleep a bit and then fill up the multicastRequests list
+			Async_SendMRP(CREAM_MulticastRequestHdr, multicastRequests);
+			if (multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP) {
+				/*
+				 * sleep a bit so that next time we have more requests in one MRP
+				 */
 				boost::this_thread::sleep(
 						boost::posix_time::microsec(
-								MIN_USEC_BETWEEN_L1_REQUESTS / 10));
+								MIN_USEC_BETWEEN_L1_REQUESTS));
 				continue;
 			}
-			Async_SendMRP(CREAM_MulticastRequestHdr, multicastRequests);
 		} else {
 			bool didSendUnicastMRPs = false;
 //			for (int i =
@@ -215,7 +213,7 @@ void L1DistributionHandler::thread() {
 				 */
 				boost::this_thread::sleep(
 						boost::posix_time::microsec(
-								MIN_USEC_BETWEEN_L1_REQUESTS / 2));
+								MIN_USEC_BETWEEN_L1_REQUESTS));
 			}
 		}
 	}
@@ -239,7 +237,7 @@ void L1DistributionHandler::Async_SendMRP(
 							MAX_TRIGGERS_PER_L1MRP : triggers.size());
 
 	/*
-	 * Copy tha dataHDR into a new buffer which will be sent afterwards
+	 * Copy the dataHDR into a new buffer which will be sent afterwards
 	 */
 	char* buff = new char[sizeOfMRP];
 	memcpy(buff, reinterpret_cast<const char*>(dataHDR),
@@ -267,10 +265,30 @@ void L1DistributionHandler::Async_SendMRP(
 	dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
 			&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
-//	NetworkHandler::AsyncSendFrame( { buff, offset, true });
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//				Debug printout
+	struct cream::MRP_FRAME_HDR* hdr = (struct cream::MRP_FRAME_HDR*) buff;
+
+	std::stringstream msg;
+	msg << "Sending MRP with following " << ntohs(hdr->MRP_HDR.numberOfTriggers)
+			<< " event numbers:" << std::endl;
+	uint pointer = sizeof(cream::MRP_FRAME_HDR);
+	for (int trigger = 0; trigger < ntohs(hdr->MRP_HDR.numberOfTriggers);
+			trigger++) {
+		cream::TRIGGER_RAW_HDR* t = (cream::TRIGGER_RAW_HDR*) (buff + pointer);
+		pointer += sizeof(cream::TRIGGER_RAW_HDR);
+
+		msg << (ntohl(t->eventNumber) >> 8) << " \t";
+	}
+	msg << std::endl;
+	LOG(ERROR)<< msg.str();
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/*
+	 * Send the frame to the L1 dispatcher via ZMQ
+	 */
 	zmq::message_t message(buff, offset,
 			(zmq::free_fn*) ZMQHandler::freeZmqMessage);
-
 	while (ZMQHandler::IsRunning()) {
 		try {
 			dispatcherSocket_->send(message);

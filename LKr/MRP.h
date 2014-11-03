@@ -25,7 +25,7 @@ namespace cream {
 /**
  * Defines the structure of a L1 trigger element as defined in table 4 in NA62-11-02.
  */
-struct TRIGGER_RAW_HDR {
+struct TRIGGER_RAW_HDR { // 12 byte
 	uint32_t timestamp;
 
 	uint8_t fineTime;
@@ -39,7 +39,7 @@ struct TRIGGER_RAW_HDR {
 /**
  * Defines the structure of a L1 MRP header as defined in table 4 in NA62-11-02.
  */
-struct MRP_RAW_HDR {
+struct MRP_RAW_HDR { // 12 byte
 	uint16_t numberOfTriggers;
 	uint16_t MRPLength;
 
@@ -68,11 +68,11 @@ struct MRP_RAW_HDR {
 	}
 }__attribute__ ((__packed__));
 
-struct MRP_FRAME_HDR {
+struct MRP_FRAME_HDR { // 54 byte
 
-	struct UDP_HDR udp;
+	struct UDP_HDR udp; // 42 byte
 
-	struct MRP_RAW_HDR MRP_HDR;
+	struct MRP_RAW_HDR MRP_HDR; // 12 byte
 
 	void SetNumberOfTriggers(uint16_t triggerNum) {
 		MRP_HDR.SetNumberOfTriggers(triggerNum);
