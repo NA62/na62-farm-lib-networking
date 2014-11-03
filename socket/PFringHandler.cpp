@@ -50,8 +50,8 @@ static ntop::PFring ** queueRings_; // one ring per queue
 NetworkHandler::NetworkHandler(std::string deviceName) {
 	deviceName_ = deviceName;
 
-	myMac_ = EthernetUtils::GetMacOfInterface(deviceName);
-	myIP_ = EthernetUtils::GetIPOfInterface(GetDeviceName());
+	myMac_ = EthernetUtils::GetMacOfInterface(deviceName_);
+	myIP_ = EthernetUtils::GetIPOfInterface(deviceName_);
 
 	u_int32_t flags = 0;
 	flags |= PF_RING_LONG_HEADER;
@@ -63,6 +63,11 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 	pfring** rings = new pfring*[MAX_NUM_RX_CHANNELS];
 	numberOfQueues_ = pfring_open_multichannel((char*) deviceName.data(),
 			snaplen, flags, rings);
+
+	if (numberOfQueues_ == 0) {
+		LOG(ERROR)<< "Unable to open pf_ring on " << deviceName;
+		exit(1);
+	}
 
 	queueRings_ = new ntop::PFring *[numberOfQueues_];
 

@@ -9,22 +9,20 @@
 #ifndef L1DISTRIBUTIONHANDLER_H_
 #define L1DISTRIBUTIONHANDLER_H_
 
-#include <atomic>
+#include <sys/types.h>
+#include <tbb/concurrent_queue.h>
+#include <utils/AExecutable.h>
 #include <cstdbool>
 #include <cstdint>
+#include <string>
 #include <utility>
-#include <queue>
-#include <boost/thread.hpp>
-#include <boost/timer/timer.hpp>
-#include <mutex>
-#include <utils/AExecutable.h>
-#include <tbb/spin_mutex.h>
-#include <tbb/mutex.h>
-#include <tbb/concurrent_queue.h>
-#include <tbb/concurrent_vector.h>
+#include <vector>
 
 #include "MRP.h"
-#include "../socket/EthernetUtils.h"
+
+namespace zmq {
+class socket_t;
+} /* namespace zmq */
 
 namespace na62 {
 class Event;
@@ -36,8 +34,8 @@ class L1DistributionHandler: public AExecutable {
 public:
 
 	static void Async_RequestLKRDataMulticast(Event *event, bool zSuppressed);
-	static void Async_RequestLKRDataUnicast(const Event *event, bool zSuppressed,
-			const std::vector<uint16_t> crateCREAMIDs);
+	static void Async_RequestLKRDataUnicast(const Event *event,
+			bool zSuppressed, const std::vector<uint16_t> crateCREAMIDs);
 
 	static inline uint64_t GetL1TriggersSent() {
 		return L1DistributionHandler::L1TriggersSent;
@@ -49,10 +47,13 @@ public:
 
 	static void Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 			uint minUsecBetweenL1Requests, std::string multicastGroupName,
-			uint sourcePort, uint destinationPort);
+			uint sourcePort, uint destinationPort,
+			std::string dispatcherAddress);
 
 private:
 	void thread();
+
+	virtual void onInterruption();
 
 	/*
 	 * Will cause to send all the Triggers in <triggers> with the given <dataHDR> asynchronously
@@ -75,6 +76,8 @@ private:
 	static uint MAX_TRIGGERS_PER_L1MRP;
 	static uint NUMBER_OF_EBS;
 	static uint MIN_USEC_BETWEEN_L1_REQUESTS;
+
+	static zmq::socket_t* dispatcherSocket_;
 };
 
 } /* namespace cream */

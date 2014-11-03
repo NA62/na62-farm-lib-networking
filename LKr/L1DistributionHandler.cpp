@@ -24,9 +24,12 @@
 #include <string>
 #include <vector>
 #include <queue>
+#include <zmq.hpp>
+#include <utils/Utils.h>
 
 #include "../socket/NetworkHandler.h"
 #include "../structs/Network.h"
+#include "../socket/ZMQHandler.h"
 
 namespace na62 {
 namespace cream {
@@ -42,6 +45,8 @@ uint64_t L1DistributionHandler::L1MRPsSent = 0;
 uint L1DistributionHandler::NUMBER_OF_EBS = 0;
 uint L1DistributionHandler::MAX_TRIGGERS_PER_L1MRP = 0;
 uint L1DistributionHandler::MIN_USEC_BETWEEN_L1_REQUESTS = 0;
+
+zmq::socket_t* L1DistributionHandler::dispatcherSocket_;
 
 struct cream::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event,
 bool zSuppressed) {
@@ -61,6 +66,10 @@ bool zSuppressed) {
 	triggerHDR->eventNumber = event->getEventNumber();
 #endif
 	return triggerHDR;
+}
+
+void L1DistributionHandler::onInterruption() {
+	ZMQHandler::DestroySocket(dispatcherSocket_);
 }
 
 void L1DistributionHandler::Async_RequestLKRDataMulticast(Event * event,
@@ -87,7 +96,7 @@ bool zSuppressed, const std::vector<uint16_t> crateCREAMIDs) {
 
 void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 		uint minUsecBetweenL1Requests, std::string multicastGroupName,
-		uint sourcePort, uint destinationPort) {
+		uint sourcePort, uint destinationPort, std::string dispatcherAddress) {
 	MAX_TRIGGERS_PER_L1MRP = maxTriggersPerMRP;
 	NUMBER_OF_EBS = numberOfEBs;
 	MIN_USEC_BETWEEN_L1_REQUESTS = minUsecBetweenL1Requests;
@@ -125,6 +134,9 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 
 	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 	CREAM_UnicastRequestHdr->MRP_HDR.reserved = 0;
+
+	dispatcherSocket_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
+	dispatcherSocket_->connect(dispatcherAddress.c_str());
 
 //	EthernetUtils::GenerateUDP(CREAM_RequestBuff, EthernetUtils::StringToMAC("00:15:17:b2:26:fa"), "10.0.4.3", sPort, dPort);
 }
@@ -255,7 +267,22 @@ void L1DistributionHandler::Async_SendMRP(
 	dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
 			&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
-	NetworkHandler::AsyncSendFrame( { buff, offset, true });
+//	NetworkHandler::AsyncSendFrame( { buff, offset, true });
+	zmq::message_t message(buff, offset,
+			(zmq::free_fn*) ZMQHandler::freeZmqMessage);
+
+	while (ZMQHandler::IsRunning()) {
+		try {
+			dispatcherSocket_->send(message);
+			break;
+		} catch (const zmq::error_t& ex) {
+			if (ex.num() != EINTR) { // try again if EINTR (signal caught)
+				LOG(ERROR)<< ex.what();
+				ZMQHandler::DestroySocket(dispatcherSocket_);
+				return;
+			}
+		}
+	}
 
 	L1TriggersSent += numberOfTriggers;
 	L1MRPsSent++;
