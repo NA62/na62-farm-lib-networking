@@ -265,24 +265,24 @@ void L1DistributionHandler::Async_SendMRP(
 	dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
 			&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//				Debug printout
-	struct cream::MRP_FRAME_HDR* hdr = (struct cream::MRP_FRAME_HDR*) buff;
-
-	std::stringstream msg;
-	msg << "Sending MRP with following " << ntohs(hdr->MRP_HDR.numberOfTriggers)
-			<< " event numbers:" << std::endl;
-	uint pointer = sizeof(cream::MRP_FRAME_HDR);
-	for (int trigger = 0; trigger < ntohs(hdr->MRP_HDR.numberOfTriggers);
-			trigger++) {
-		cream::TRIGGER_RAW_HDR* t = (cream::TRIGGER_RAW_HDR*) (buff + pointer);
-		pointer += sizeof(cream::TRIGGER_RAW_HDR);
-
-		msg << (ntohl(t->eventNumber) >> 8) << " \t";
-	}
-	msg << std::endl;
-	LOG(ERROR)<< msg.str();
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//	//				Debug printout
+//	struct cream::MRP_FRAME_HDR* hdr = (struct cream::MRP_FRAME_HDR*) buff;
+//
+//	std::stringstream msg;
+//	msg << "Sending MRP with following " << ntohs(hdr->MRP_HDR.numberOfTriggers)
+//			<< " event numbers:" << std::endl;
+//	uint pointer = sizeof(cream::MRP_FRAME_HDR);
+//	for (int trigger = 0; trigger < ntohs(hdr->MRP_HDR.numberOfTriggers);
+//			trigger++) {
+//		cream::TRIGGER_RAW_HDR* t = (cream::TRIGGER_RAW_HDR*) (buff + pointer);
+//		pointer += sizeof(cream::TRIGGER_RAW_HDR);
+//
+//		msg << (ntohl(t->eventNumber) >> 8) << " \t";
+//	}
+//	msg << std::endl;
+//	LOG(ERROR)<< msg.str();
+//	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	 * Send the frame to the L1 dispatcher via ZMQ
