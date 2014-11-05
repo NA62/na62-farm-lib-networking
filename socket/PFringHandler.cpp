@@ -89,7 +89,7 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 		}
 	}
 
-	asyncData_.set_capacity(10);
+	asyncData_.set_capacity(1000);
 }
 
 NetworkHandler::~NetworkHandler() {
