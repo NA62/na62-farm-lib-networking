@@ -89,7 +89,7 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 		}
 	}
 
-	asyncData_.set_capacity(10);
+	asyncData_.set_capacity(1000);
 }
 
 NetworkHandler::~NetworkHandler() {
@@ -111,10 +111,10 @@ void NetworkHandler::thread() {
 
 void NetworkHandler::PrintStats() {
 	pfring_stat stats = { 0 };
-	LOG(INFO)<< "Ring\trecv\tdrop";
+	LOG(INFO)<< "Ring\trecv\tdrop\t%drop";
 	for (int i = 0; i < numberOfQueues_; i++) {
 		queueRings_[i]->get_stats(&stats);
-		LOG(INFO)<<i << " \t" << stats.recv << "\t" << stats.drop;
+		LOG(INFO)<<i << " \t" << stats.recv << "\t" << stats.drop << "\t" << 100.*stats.drop/(stats.recv+1.);
 	}
 }
 
@@ -147,10 +147,10 @@ int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
 	return 0;
 }
 
-int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
+int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, char** pkt,
 		u_int pkt_len, uint8_t wait_for_incoming_packet, uint queueNumber) {
-	int result = queueRings_[queueNumber]->get_next_packet(hdr, (char**) pkt,
-			pkt_len, wait_for_incoming_packet);
+	int result = queueRings_[queueNumber]->get_next_packet(hdr, pkt, pkt_len,
+			wait_for_incoming_packet);
 	if (result == 1) {
 		bytesReceived_.fetch_add(hdr->len, std::memory_order_relaxed);
 		framesReceived_.fetch_add(1, std::memory_order_relaxed);

@@ -27,7 +27,7 @@ public:
 	NetworkHandler(std::string deviceName);
 	virtual ~NetworkHandler();
 
-	static int GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
+	static int GetNextFrame(struct pfring_pkthdr *hdr, char** pkt,
 			u_int pkt_len, uint8_t wait_for_incoming_packet, uint queueNumber);
 
 	static std::string GetDeviceName();
@@ -74,13 +74,13 @@ public:
 		return framesReceived_;
 	}
 
-	static inline uint64_t GetFramesSent(){
+	static inline uint64_t GetFramesSent() {
 		return framesSent_;
 	}
 
 	static uint64_t GetFramesDropped();
 
-	static uint getNumberOfEnqueuedFrames(){
+	static uint getNumberOfEnqueuedFrames() {
 		return asyncData_.size();
 	}
 

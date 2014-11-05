@@ -31,7 +31,8 @@ class NetworkHandler;
 
 struct DataContainer {
 	char * data;
-	uint16_t length;bool ownerMayFreeData;
+	uint16_t length;
+	bool ownerMayFreeData;
 
 	DataContainer() :
 			data(nullptr), length(0), ownerMayFreeData(false) {
@@ -86,6 +87,12 @@ struct DataContainer {
 		}
 		return *this;
 	}
+
+	void free() {
+		if (ownerMayFreeData) {
+			delete[] data;
+		}
+	}
 };
 
 class EthernetUtils {
@@ -129,7 +136,7 @@ public:
 		uint32_t addr = (multicastGroup);
 		uint32_t multicastIP = (addr & 0xffff7f00);
 
-		memcpy(&macAddress[0] + 3, ((char*) &multicastIP)+1 , 3);
+		memcpy(&macAddress[0] + 3, ((char*) &multicastIP) + 1, 3);
 
 		return macAddress;
 	}
