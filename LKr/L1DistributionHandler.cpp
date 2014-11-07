@@ -172,7 +172,7 @@ void L1DistributionHandler::thread() {
 			/*
 			 * Do not send if there's still a MRP in the queue and the current list is not full
 			 */
-			if (NetworkHandler::getNumberOfEnqueuedFrames() != 0
+			if (NetworkHandler::getNumberOfEnqueuedSendFrames() != 0
 					&& multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP) {
 				// sleep a bit and then fill up the multicastRequests list
 				boost::this_thread::sleep(

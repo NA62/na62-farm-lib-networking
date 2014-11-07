@@ -80,8 +80,8 @@ public:
 
 	static uint64_t GetFramesDropped();
 
-	static uint getNumberOfEnqueuedFrames() {
-		return asyncData_.size();
+	static uint getNumberOfEnqueuedSendFrames() {
+		return asyncSendData_.size();
 	}
 
 private:
@@ -94,7 +94,7 @@ private:
 	static uint16_t numberOfQueues_;
 	static std::string deviceName_;
 
-	static tbb::concurrent_bounded_queue<DataContainer> asyncData_;
+	static tbb::concurrent_bounded_queue<DataContainer> asyncSendData_;
 
 	/*
 	 * The thread will send gratuitous arp requests

@@ -40,7 +40,7 @@ std::atomic<uint64_t> NetworkHandler::framesReceived_(0);
 std::atomic<uint64_t> NetworkHandler::framesSent_(0);
 
 std::string NetworkHandler::deviceName_ = "";
-tbb::concurrent_bounded_queue<DataContainer> NetworkHandler::asyncData_;
+tbb::concurrent_bounded_queue<DataContainer> NetworkHandler::asyncSendData_;
 
 std::vector<char> NetworkHandler::myMac_;
 uint32_t NetworkHandler::myIP_;
@@ -89,7 +89,7 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 		}
 	}
 
-	asyncData_.set_capacity(1000);
+	asyncSendData_.set_capacity(1000);
 }
 
 NetworkHandler::~NetworkHandler() {
@@ -129,12 +129,12 @@ uint64_t NetworkHandler::GetFramesDropped() {
 }
 
 void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
-	asyncData_.push(std::move(data));
+	asyncSendData_.push(std::move(data));
 }
 
 int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
 	DataContainer data;
-	if (asyncData_.try_pop(data)) {
+	if (asyncSendData_.try_pop(data)) {
 		int bytes = SendFrameConcurrently(threadNum, (const u_char*) data.data,
 				data.length);
 
