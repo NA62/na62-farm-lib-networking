@@ -110,6 +110,7 @@
 								<option id="gnu.cpp.compiler.option.preprocessor.def.114023272" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="USE_PFRING"/>
 								</option>
+								<option id="gnu.cpp.compiler.option.optimization.flags.447326994" superClass="gnu.cpp.compiler.option.optimization.flags" value="-Ofast" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1688699581" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.lib.release.502793752" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.lib.release">

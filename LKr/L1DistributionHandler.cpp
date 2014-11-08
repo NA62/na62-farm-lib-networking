@@ -34,7 +34,7 @@ tbb::concurrent_queue<struct TRIGGER_RAW_HDR*> L1DistributionHandler::multicastM
 
 //ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* L1DistributionHandler::unicastMRPWithIPsQueues;
 
-struct cream::MRP_FRAME_HDR* L1DistributionHandler::CREAM_MulticastRequestHdr;
+std::vector<struct cream::MRP_FRAME_HDR*> L1DistributionHandler::CREAM_MulticastRequestHdrs;
 struct cream::MRP_FRAME_HDR* L1DistributionHandler::CREAM_UnicastRequestHdr;
 
 uint64_t L1DistributionHandler::L1TriggersSent = 0;
@@ -86,8 +86,9 @@ bool zSuppressed, const std::vector<uint16_t> crateCREAMIDs) {
 }
 
 void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
-		uint minUsecBetweenL1Requests, std::string multicastGroupName,
-		uint sourcePort, uint destinationPort) {
+		uint minUsecBetweenL1Requests,
+		std::vector<std::string> multicastGroupNames, uint sourcePort,
+		uint destinationPort) {
 	MAX_TRIGGERS_PER_L1MRP = maxTriggersPerMRP;
 	NUMBER_OF_EBS = numberOfEBs;
 	MIN_USEC_BETWEEN_L1_REQUESTS = minUsecBetweenL1Requests;
@@ -105,23 +106,27 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 //				unicastTriggerAndCrateCREAMIDs_type>(100000);
 //	}
 
-	CREAM_MulticastRequestHdr = new struct cream::MRP_FRAME_HDR();
+	for (std::string multicastIP : multicastGroupNames) {
+		cream::MRP_FRAME_HDR* hdr = new struct cream::MRP_FRAME_HDR();
+		CREAM_MulticastRequestHdrs.push_back(hdr);
+
+		const uint32_t multicastGroup = inet_addr(multicastIP.data());
+
+		EthernetUtils::GenerateUDP((char*) hdr,
+				EthernetUtils::GenerateMulticastMac(multicastGroup),
+				multicastGroup, sourcePort, destinationPort);
+
+		hdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
+		hdr->MRP_HDR.reserved = 0;
+	}
+
 	CREAM_UnicastRequestHdr = new struct cream::MRP_FRAME_HDR();
-
-	const uint32_t multicastGroup = inet_addr(multicastGroupName.data());
-	EthernetUtils::GenerateUDP((char*) CREAM_MulticastRequestHdr,
-			EthernetUtils::GenerateMulticastMac(multicastGroup), multicastGroup,
-			sourcePort, destinationPort);
-
 	/*
 	 * TODO: The router MAC has to be set here:
 	 */
 	EthernetUtils::GenerateUDP((char*) CREAM_UnicastRequestHdr,
 			EthernetUtils::StringToMAC("00:11:22:33:44:55"),
 			0/*Will be set later*/, sourcePort, destinationPort);
-
-	CREAM_MulticastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
-	CREAM_MulticastRequestHdr->MRP_HDR.reserved = 0;
 
 	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 	CREAM_UnicastRequestHdr->MRP_HDR.reserved = 0;
@@ -180,7 +185,8 @@ void L1DistributionHandler::thread() {
 								MIN_USEC_BETWEEN_L1_REQUESTS / 10));
 				continue;
 			}
-			Async_SendMRP(CREAM_MulticastRequestHdr, multicastRequests);
+
+			Async_SendMRP(multicastRequests);
 		} else {
 			bool didSendUnicastMRPs = false;
 //			for (int i =
@@ -216,8 +222,8 @@ void L1DistributionHandler::thread() {
  * will be queued to be sent by the PacketHandlers
  */
 void L1DistributionHandler::Async_SendMRP(
-		const struct cream::MRP_FRAME_HDR* dataHDR,
-		std::vector<struct TRIGGER_RAW_HDR*>& triggers) {
+/*const struct cream::MRP_FRAME_HDR* dataHDR,*/
+std::vector<struct TRIGGER_RAW_HDR*>& triggers) {
 
 	uint16_t offset = sizeof(struct cream::MRP_FRAME_HDR);
 
@@ -230,10 +236,8 @@ void L1DistributionHandler::Async_SendMRP(
 	 * Copy tha dataHDR into a new buffer which will be sent afterwards
 	 */
 	char* buff = new char[sizeOfMRP];
-	memcpy(buff, reinterpret_cast<const char*>(dataHDR),
-			sizeof(struct cream::MRP_FRAME_HDR));
-	struct cream::MRP_FRAME_HDR* dataHDRToBeSent =
-			(struct cream::MRP_FRAME_HDR*) buff;
+
+
 
 	uint numberOfTriggers = 0;
 	while (triggers.size() != 0 && numberOfTriggers != MAX_TRIGGERS_PER_L1MRP) {
@@ -248,14 +252,26 @@ void L1DistributionHandler::Async_SendMRP(
 		numberOfTriggers++;
 	}
 
-	dataHDRToBeSent->SetNumberOfTriggers(numberOfTriggers);
-	dataHDRToBeSent->udp.ip.check = 0;
-	dataHDRToBeSent->udp.ip.check = EthernetUtils::GenerateChecksum(
-			(const char*) (&dataHDRToBeSent->udp.ip), sizeof(struct iphdr));
-	dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
-			&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
-	NetworkHandler::AsyncSendFrame( { buff, offset, true });
+	for (auto dataHDR : CREAM_MulticastRequestHdrs) {
+		char* frame = new char[offset];
+		memcpy(frame, buff, offset);
+		memcpy(frame, reinterpret_cast<const char*>(dataHDR),
+				sizeof(struct cream::MRP_FRAME_HDR));
+
+		struct cream::MRP_FRAME_HDR* dataHDRToBeSent =
+				(struct cream::MRP_FRAME_HDR*) frame;
+		dataHDRToBeSent->SetNumberOfTriggers(numberOfTriggers);
+
+		dataHDRToBeSent->udp.ip.check = 0;
+		dataHDRToBeSent->udp.ip.check = EthernetUtils::GenerateChecksum(
+				(const char*) (&dataHDRToBeSent->udp.ip), sizeof(struct iphdr));
+		dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
+				&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
+
+		NetworkHandler::AsyncSendFrame( { frame, offset, true });
+	}
+	delete[] buff;
 
 	L1TriggersSent += numberOfTriggers;
 	L1MRPsSent++;
