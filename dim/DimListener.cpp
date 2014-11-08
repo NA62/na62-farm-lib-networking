@@ -8,7 +8,6 @@
 #include "DimListener.h"
 
 #include <boost/filesystem.hpp>
-#include <boost/lexical_cast.hpp>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <csignal>

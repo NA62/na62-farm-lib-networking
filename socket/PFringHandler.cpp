@@ -6,7 +6,6 @@
  */
 #ifdef USE_PFRING
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/thread/pthread/thread_data.hpp>
 #include <glog/logging.h>
 #include <linux/pf_ring.h>
@@ -70,7 +69,7 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 		std::string queDeviceName = deviceName;
 
 		queDeviceName = deviceName + "@"
-				+ boost::lexical_cast<std::string>((int) i);
+				+ std::to_string((int) i);
 		/*
 		 * http://www.ntop.org/pfring_api/pfring_8h.html#a397061c37a91876b6b68584e2cb99da5
 		 */
