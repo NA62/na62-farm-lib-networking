@@ -48,7 +48,7 @@ public:
 	}
 
 	static void Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
-			uint minUsecBetweenL1Requests, std::string multicastGroupName,
+			uint minUsecBetweenL1Requests, std::vector<std::string> multicastGroupNames,
 			uint sourcePort, uint destinationPort);
 
 private:
@@ -58,7 +58,7 @@ private:
 	 * Will cause to send all the Triggers in <triggers> with the given <dataHDR> asynchronously
 	 * @return uint16_t The number of Bytes that will be sent
 	 */
-	static void Async_SendMRP(const struct cream::MRP_FRAME_HDR* dataHDR,
+	static void Async_SendMRP(/*const struct cream::MRP_FRAME_HDR* dataHDR,*/
 			std::vector<struct TRIGGER_RAW_HDR*>& triggers);
 
 	/*
@@ -66,7 +66,7 @@ private:
 	 */
 	static tbb::concurrent_queue<struct TRIGGER_RAW_HDR*> multicastMRPQueue;
 
-	static struct cream::MRP_FRAME_HDR* CREAM_MulticastRequestHdr;
+	static std::vector<struct cream::MRP_FRAME_HDR*> CREAM_MulticastRequestHdrs;
 	static struct cream::MRP_FRAME_HDR* CREAM_UnicastRequestHdr;
 
 	static uint64_t L1TriggersSent;

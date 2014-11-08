@@ -88,7 +88,7 @@ struct DataContainer {
 		return *this;
 	}
 
-	void free() {
+	void inline free() {
 		if (ownerMayFreeData) {
 			delete[] data;
 		}
