@@ -13,6 +13,7 @@
 #include <set>
 #include <string>
 #include <zmq.hpp>
+#include <map>
 
 namespace std {
 class mutex;
@@ -30,7 +31,7 @@ public:
 	static void Initialize(const int numberOfIOThreads);
 
 	static void shutdown();
-	static zmq::socket_t* GenerateSocket(int socketType, int highWaterMark =
+	static zmq::socket_t* GenerateSocket(std::string name, int socketType, int highWaterMark =
 			10000000);
 
 	static std::string GetEBL0Address(int threadNum);
@@ -63,6 +64,7 @@ private:
 	static std::mutex connectMutex_;
 	static bool running_;
 	static std::atomic<int> numberOfActiveSockets_;
+	static std::map<zmq::socket_t*, std::string> allSockets_;
 };
 
 } /* namespace na62 */
