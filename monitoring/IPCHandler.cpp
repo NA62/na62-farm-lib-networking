@@ -43,19 +43,40 @@ zmq::socket_t* IPCHandler::stateReceiver_ = nullptr;
 zmq::socket_t* IPCHandler::statisticsReceiver_ = nullptr;
 zmq::socket_t* IPCHandler::commandReceiver_ = nullptr;
 
+bool IPCHandler::stateSenderActive_;
+bool IPCHandler::statisticsSenderActive_;
+bool IPCHandler::commandSenderActive_;
+
+bool IPCHandler::stateReceiverActive_;
+bool IPCHandler::statisticsReceiverActive_;
+bool IPCHandler::commandReceiverActive_;
+
 void IPCHandler::shutDown() {
 	/*
 	 * Destroy all sockets. If they are null ZMQHandler will irgnore them
 	 */
-	ZMQHandler::DestroySocket(stateSender_);
-	ZMQHandler::DestroySocket(statisticsSender_);
-	ZMQHandler::DestroySocket(commandSender_);
-	ZMQHandler::DestroySocket(stateReceiver_);
-	ZMQHandler::DestroySocket(statisticsReceiver_);
-	ZMQHandler::DestroySocket(commandReceiver_);
+	if (!stateSenderActive_) {
+		ZMQHandler::DestroySocket(stateSender_);
+	}
+	if (!statisticsSenderActive_) {
+		ZMQHandler::DestroySocket(statisticsSender_);
+	}
+	if (!commandSenderActive_) {
+		ZMQHandler::DestroySocket(commandSender_);
+	}
+	if (!stateReceiverActive_) {
+		ZMQHandler::DestroySocket(stateReceiver_);
+	}
+	if (!statisticsReceiverActive_) {
+		ZMQHandler::DestroySocket(statisticsReceiver_);
+	}
+	if (!commandReceiverActive_) {
+		ZMQHandler::DestroySocket(commandReceiver_);
+	}
+
 }
 
-bool IPCHandler::isRunning(){
+bool IPCHandler::isRunning() {
 	return ZMQHandler::IsRunning();
 }
 
@@ -64,9 +85,9 @@ bool IPCHandler::connectClient() {
 		return false;
 	}
 
-	stateSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
-	statisticsSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
-	commandReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
+	stateSender_ = ZMQHandler::GenerateSocket("stateSender_", ZMQ_PUSH);
+	statisticsSender_ = ZMQHandler::GenerateSocket("statisticsSender_", ZMQ_PUSH);
+	commandReceiver_ = ZMQHandler::GenerateSocket("commandReceiver_", ZMQ_PULL);
 
 	stateSender_->connect(StateAddress);
 	statisticsSender_->connect(StatisticsAddress);
@@ -80,9 +101,9 @@ bool IPCHandler::bindServer() {
 		return false;
 	}
 
-	stateReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
-	statisticsReceiver_ = ZMQHandler::GenerateSocket(ZMQ_PULL);
-	commandSender_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
+	stateReceiver_ = ZMQHandler::GenerateSocket("stateReceiver_", ZMQ_PULL);
+	statisticsReceiver_ = ZMQHandler::GenerateSocket("statisticsReceiver_", ZMQ_PULL);
+	commandSender_ = ZMQHandler::GenerateSocket("commandSender_", ZMQ_PUSH);
 
 	stateReceiver_->bind(StateAddressServer);
 	statisticsReceiver_->bind(StatisticsAddressServer);
@@ -167,6 +188,7 @@ void IPCHandler::sendCommand(std::string command) {
 	} catch (const zmq::error_t& ex) {
 		if (ex.num() != EINTR) { // try again if EINTR (signal caught)
 			ZMQHandler::DestroySocket(commandSender_);
+			commandSender_ = nullptr;
 		}
 	}
 }
@@ -185,11 +207,14 @@ std::string IPCHandler::getNextCommand() {
 
 	zmq::message_t msg;
 	try {
+		commandReceiverActive_ = true;
 		commandReceiver_->recv(&msg);
+		commandReceiverActive_ = false;
 		return std::string((const char*) msg.data(), msg.size());
 	} catch (const zmq::error_t& ex) {
 		if (ex.num() != EINTR) { // try again if EINTR (signal caught)
 			ZMQHandler::DestroySocket(commandReceiver_);
+			commandReceiver_ = nullptr;
 		}
 	}
 	return "";
@@ -207,12 +232,15 @@ std::string IPCHandler::tryToReceiveStatistics() {
 	zmq::message_t msg;
 
 	try {
+		statisticsReceiverActive_ = true;
 		if (statisticsReceiver_->recv(&msg)) {
 			return std::string((const char*) msg.data(), msg.size());
 		}
+		statisticsReceiverActive_ = false;
 	} catch (const zmq::error_t& ex) {
 		if (ex.num() != EINTR) { // try again if EINTR (signal caught)
 			ZMQHandler::DestroySocket(statisticsReceiver_);
+			statisticsReceiver_ = nullptr;
 		}
 	}
 	return "";
@@ -229,12 +257,15 @@ STATE IPCHandler::tryToReceiveState() {
 
 	zmq::message_t msg;
 	try {
+		stateReceiverActive_ = true;
 		if (stateReceiver_->recv(&msg)) {
 			return *((STATE*) msg.data());
 		}
+		stateReceiverActive_ = false;
 	} catch (const zmq::error_t& ex) {
 		if (ex.num() != EINTR) { // try again if EINTR (signal caught)
 			ZMQHandler::DestroySocket(stateReceiver_);
+			stateReceiver_ = nullptr;
 		}
 	}
 	return TIMEOUT;

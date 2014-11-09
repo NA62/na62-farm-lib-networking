@@ -24,6 +24,7 @@ bool ZMQHandler::running_ = true;
 std::atomic<int> ZMQHandler::numberOfActiveSockets_;
 std::set<std::string> ZMQHandler::boundAddresses_;
 std::mutex ZMQHandler::connectMutex_;
+std::map<zmq::socket_t*, std::string> ZMQHandler::allSockets_;
 
 void ZMQHandler::Initialize(const int numberOfIOThreads) {
 	context_ = new zmq::context_t(numberOfIOThreads);
@@ -33,14 +34,11 @@ void ZMQHandler::Stop() {
 }
 
 void ZMQHandler::shutdown() {
-	while (numberOfActiveSockets_ != 0) {
-		usleep(1000);
-	}
-
 	delete context_;
 }
 
-zmq::socket_t* ZMQHandler::GenerateSocket(int socketType, int highWaterMark) {
+zmq::socket_t* ZMQHandler::GenerateSocket(std::string name, int socketType,
+		int highWaterMark) {
 	int linger = 0;
 	zmq::socket_t* socket = new zmq::socket_t(*context_, socketType);
 	socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
@@ -48,6 +46,7 @@ zmq::socket_t* ZMQHandler::GenerateSocket(int socketType, int highWaterMark) {
 	socket->setsockopt(ZMQ_SNDHWM, &highWaterMark, sizeof(highWaterMark));
 
 	numberOfActiveSockets_++;
+	allSockets_[socket] = name;
 	return socket;
 }
 
@@ -56,11 +55,17 @@ void ZMQHandler::DestroySocket(zmq::socket_t* socket) {
 		return;
 	}
 
+	allSockets_.erase(socket);
+	std::string missingSockets;
+	for (auto socketAndName : allSockets_) {
+		missingSockets += socketAndName.second + ",";
+	}
+
 	socket->close();
 	delete socket;
 	numberOfActiveSockets_--;
-	std::cout << "Closed ZMQ socket (" << numberOfActiveSockets_
-			<< " remaining)" << std::endl;
+	LOG(INFO)<< "Closed ZMQ socket (" << numberOfActiveSockets_
+	<< " remaining: " << missingSockets << ")";
 }
 
 std::string ZMQHandler::GetEBL0Address(int threadNum) {
@@ -94,8 +99,8 @@ void ZMQHandler::ConnectInproc(zmq::socket_t* socket, std::string address) {
 	connectMutex_.unlock();
 }
 
-void ZMQHandler::sendMessage(zmq::socket_t* socket,
-		zmq::message_t&& msg, int flags) {
+void ZMQHandler::sendMessage(zmq::socket_t* socket, zmq::message_t&& msg,
+		int flags) {
 	while (ZMQHandler::IsRunning()) {
 		try {
 			socket->send(msg, flags);
