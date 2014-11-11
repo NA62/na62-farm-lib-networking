@@ -63,31 +63,26 @@ void DimListener::infoHandler() {
 		for (auto callback : eobCallbacks) {
 			callback(eob);
 		}
-		std::cout << "Updating EOB timestamp to " << eob << std::endl;
 	} else if (curr == &SOB_TS_) {
 		uint sob = SOB_TS_.getInt();
 		for (auto callback : sobCallbacks) {
 			callback(sob);
 		}
-		std::cout << "Updating SOB timestamp to " << sob << std::endl;
 	} else if (curr == &runNumber_) {
 		uint runNumber = runNumber_.getInt();
 		for (auto callback : runNumberCallbacks) {
 			callback(runNumber);
 		}
-		std::cout << "Updating RunNumber to " << runNumber << std::endl;
 	} else if (curr == &burstNumber_) {
 		uint burstID = burstNumber_.getInt();
 		for (auto callback : burstNumberCallbacks) {
 			callback(burstID);
 		}
-		std::cout << "Updating burstID to " << burstID << std::endl;
 	} else if (curr == &nextBurstNumber_) {
 		uint burstID = nextBurstNumber_.getInt();
 		for (auto callback : nextBurstNumberCallbacks) {
 			callback(burstID);
 		}
-		std::cout << "Updating nextBurstID to " << burstID << std::endl;
 	}
 }
 
