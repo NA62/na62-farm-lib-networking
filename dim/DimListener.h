@@ -29,6 +29,7 @@ public:
 	uint getRunNumber();
 	uint getBurstNumber();
 	uint getNextBurstNumber();
+	uint getRunningMergers();
 
 	void registerEobListener(std::function<void(uint)> callback) {
 		eobCallbacks.push_back(std::move(callback));
@@ -44,6 +45,9 @@ public:
 	}
 	void registerNextBurstNumberListener(std::function<void(uint)> callback) {
 		nextBurstNumberCallbacks.push_back(std::move(callback));
+	}
+	void registerRunningMergerListener(std::function<void(std::string)> callback) {
+		runningMergerCallbacks.push_back(std::move(callback));
 	}
 
 
@@ -62,12 +66,14 @@ private:
 	DimInfo runNumber_;
 	DimInfo SOB_TS_;
 	DimInfo EOB_TS_;
+	DimInfo runningMerger_;
 
 	std::vector<std::function<void(uint)>> eobCallbacks;
 	std::vector<std::function<void(uint)>> sobCallbacks;
 	std::vector<std::function<void(uint)>> runNumberCallbacks;
 	std::vector<std::function<void(uint)>> burstNumberCallbacks;
 	std::vector<std::function<void(uint)>> nextBurstNumberCallbacks;
+	std::vector<std::function<void(std::string)>> runningMergerCallbacks;
 
 	std::thread* thread;
 };
