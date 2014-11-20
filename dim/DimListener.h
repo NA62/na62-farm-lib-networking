@@ -29,7 +29,7 @@ public:
 	uint getRunNumber();
 	uint getBurstNumber();
 	uint getNextBurstNumber();
-	uint getRunningMergers();
+	std::string getRunningMergers();
 
 	void registerEobListener(std::function<void(uint)> callback) {
 		eobCallbacks.push_back(std::move(callback));

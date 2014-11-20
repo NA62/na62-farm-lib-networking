@@ -26,7 +26,7 @@ DimListener::DimListener() :
 				"RunControl/BurstNumber", -1, this), runNumber_(
 				"RunControl/RunNumber", -1, this), SOB_TS_("NA62/Timing/SOB", 0,
 				this), EOB_TS_("NA62/Timing/EOB", 0, this), runningMerger_(
-				"RunControl/RunningMergers", (char*)"", this), thread(nullptr) {
+				"RunControl/RunningMergers", (char*) "", this), thread(nullptr) {
 
 //	int runNumber = 0;
 //	if (runNumber_.getSize() <= 0) {
@@ -58,6 +58,11 @@ uint DimListener::getNextBurstNumber() {
 	return nextBurstNumber_.getInt();
 }
 
+std::string DimListener::getRunningMergers() {
+	return std::string((char*) runningMerger_.getData(),
+			runningMerger_.getSize());
+}
+
 void DimListener::infoHandler() {
 	DimInfo *curr = getInfo();
 	if (curr == &EOB_TS_) {
@@ -86,7 +91,8 @@ void DimListener::infoHandler() {
 			callback(burstID);
 		}
 	} else if (curr == &runningMerger_) {
-		std::string runningMergerList((char*)runningMerger_.getData(), runningMerger_.getSize());
+		std::string runningMergerList((char*) runningMerger_.getData(),
+				runningMerger_.getSize());
 		boost::trim(runningMergerList); // trim the string to remove any outer whitespace
 		if (!runningMergerList.empty()) {
 			for (auto callback : runningMergerCallbacks) {
