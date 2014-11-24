@@ -59,8 +59,13 @@ uint DimListener::getNextBurstNumber() {
 }
 
 std::string DimListener::getRunningMergers() {
-	return std::string((char*) runningMerger_.getData(),
-			runningMerger_.getSize());
+	if (runningMerger_.getSize() != 0) {
+		std::string runningMergerList((char*) runningMerger_.getData(),
+				runningMerger_.getSize() - 1);
+		boost::trim(runningMergerList); // trim the string to remove any outer whitespace
+		return runningMergerList;
+	}
+	return "";
 }
 
 void DimListener::infoHandler() {
@@ -91,10 +96,10 @@ void DimListener::infoHandler() {
 			callback(burstID);
 		}
 	} else if (curr == &runningMerger_) {
-		std::string runningMergerList((char*) runningMerger_.getData(),
-				runningMerger_.getSize());
-		boost::trim(runningMergerList); // trim the string to remove any outer whitespace
-		if (!runningMergerList.empty()) {
+		if (runningMerger_.getSize() != 0) {
+			std::string runningMergerList((char*) runningMerger_.getData(),
+					runningMerger_.getSize() - 1);
+			boost::trim(runningMergerList); // trim the string to remove any outer whitespace
 			for (auto callback : runningMergerCallbacks) {
 				callback(runningMergerList);
 			}
