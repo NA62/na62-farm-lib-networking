@@ -9,9 +9,6 @@
 
 #include <stddef.h>
 
-#ifdef USE_GLOG
-#include <glog/logging.h>
-#endif
 #include <unistd.h>
 #include <iostream>
 #include <zmq.h>

@@ -17,6 +17,8 @@
 #include <map>
 #include <mutex>
 
+#include <options/Logging.h>
+
 namespace na62 {
 
 zmq::context_t* ZMQHandler::context_;
@@ -64,8 +66,8 @@ void ZMQHandler::DestroySocket(zmq::socket_t* socket) {
 	socket->close();
 	delete socket;
 	numberOfActiveSockets_--;
-	LOG(INFO)<< "Closed ZMQ socket (" << numberOfActiveSockets_
-	<< " remaining: " << missingSockets << ")";
+	LOG_INFO << "Closed ZMQ socket (" << numberOfActiveSockets_
+			<< " remaining: " << missingSockets << ")" << ENDL;
 }
 
 std::string ZMQHandler::GetEBL0Address(int threadNum) {
@@ -91,7 +93,7 @@ void ZMQHandler::ConnectInproc(zmq::socket_t* socket, std::string address) {
 	connectMutex_.lock();
 	while (boundAddresses_.find(address) == boundAddresses_.end()) {
 		connectMutex_.unlock();
-		LOG(INFO)<< "ZMQ not yet bound: " << address;
+		LOG_INFO << "ZMQ not yet bound: " << address << ENDL;
 		boost::this_thread::sleep(boost::posix_time::microsec(500000));
 		connectMutex_.lock();
 	}
@@ -107,9 +109,9 @@ void ZMQHandler::sendMessage(zmq::socket_t* socket, zmq::message_t&& msg,
 			break;
 		} catch (const zmq::error_t& ex) {
 			if (ex.num() != EINTR) { // try again if EINTR (signal caught)
-				LOG(ERROR)<<ex.what();
+				LOG_ERROR << ex.what() << ENDL;
 
-				ZMQHandler::DestroySocket (socket);
+				ZMQHandler::DestroySocket(socket);
 				return;
 			}
 		}

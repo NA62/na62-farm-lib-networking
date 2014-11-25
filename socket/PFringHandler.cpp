@@ -79,10 +79,10 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 				(char*) queDeviceName.data(), snaplen, flags);
 
 		if (queueRings_[i]->enable_ring() >= 0) {
-			LOG(INFO)<< "Successfully opened device "
+			LOG_INFO<< "Successfully opened device "
 			<< queueRings_[i]->get_device_name();
 		} else {
-			LOG(ERROR) << "Unable to open device " << queDeviceName
+			LOG_ERROR << "Unable to open device " << queDeviceName
 			<< "! Is pf_ring not loaded or do you use quick mode and have already a socket bound to this device?!";
 			exit(1);
 		}
@@ -110,10 +110,10 @@ void NetworkHandler::thread() {
 
 void NetworkHandler::PrintStats() {
 	pfring_stat stats = { 0 };
-	LOG(INFO)<< "Ring\trecv\tdrop\t%drop";
+	LOG_INFO<< "Ring\trecv\tdrop\t%drop";
 	for (int i = 0; i < numberOfQueues_; i++) {
 		queueRings_[i]->get_stats(&stats);
-		LOG(INFO)<<i << " \t" << stats.recv << "\t" << stats.drop << "\t" << 100.*stats.drop/(stats.recv+1.);
+		LOG_INFO<<i << " \t" << stats.recv << "\t" << stats.drop << "\t" << 100.*stats.drop/(stats.recv+1.);
 	}
 }
 

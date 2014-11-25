@@ -80,7 +80,7 @@ bool zSuppressed, const std::vector<uint16_t> crateCREAMIDs) {
 //			zSuppressed);
 //	auto pair = std::make_pair(triggerHDR, crateCREAMIDs);
 //	while (!unicastMRPWithIPsQueues[threadNum].push(pair)) {
-//		LOG(ERROR)<<"L1DistributionHandler input queue overrun!";
+//		LOG_ERROR<<"L1DistributionHandler input queue overrun!";
 //		usleep(1000);
 //	}
 }
@@ -213,7 +213,7 @@ void L1DistributionHandler::thread() {
 			}
 		}
 	}
-	std::cerr << "Unexpected exit of L1DistributionHandler thread" << std::endl;
+	LOG_ERROR << "Unexpected exit of L1DistributionHandler thread" << ENDL;
 	exit(1);
 }
 
