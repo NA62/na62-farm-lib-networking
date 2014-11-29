@@ -68,8 +68,7 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 	for (uint8_t i = 0; i < numberOfQueues_; i++) {
 		std::string queDeviceName = deviceName;
 
-		queDeviceName = deviceName + "@"
-				+ std::to_string((int) i);
+		queDeviceName = deviceName + "@" + std::to_string((int) i);
 		/*
 		 * http://www.ntop.org/pfring_api/pfring_8h.html#a397061c37a91876b6b68584e2cb99da5
 		 */
@@ -79,11 +78,11 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 				(char*) queDeviceName.data(), snaplen, flags);
 
 		if (queueRings_[i]->enable_ring() >= 0) {
-			LOG_INFO<< "Successfully opened device "
-			<< queueRings_[i]->get_device_name();
+			LOG_INFO << "Successfully opened device "
+					<< queueRings_[i]->get_device_name();
 		} else {
 			LOG_ERROR << "Unable to open device " << queDeviceName
-			<< "! Is pf_ring not loaded or do you use quick mode and have already a socket bound to this device?!";
+					<< "! Is pf_ring not loaded or do you use quick mode and have already a socket bound to this device?!";
 			exit(1);
 		}
 	}
@@ -110,10 +109,11 @@ void NetworkHandler::thread() {
 
 void NetworkHandler::PrintStats() {
 	pfring_stat stats = { 0 };
-	LOG_INFO<< "Ring\trecv\tdrop\t%drop";
+	LOG_INFO << "Ring\trecv\tdrop\t%drop" << ENDL;
 	for (int i = 0; i < numberOfQueues_; i++) {
 		queueRings_[i]->get_stats(&stats);
-		LOG_INFO<<i << " \t" << stats.recv << "\t" << stats.drop << "\t" << 100.*stats.drop/(stats.recv+1.);
+		LOG_INFO << i << " \t" << stats.recv << "\t" << stats.drop << "\t"
+				<< 100. * stats.drop / (stats.recv + 1.) << ENDL;
 	}
 }
 
