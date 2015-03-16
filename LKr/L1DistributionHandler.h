@@ -30,14 +30,14 @@ namespace na62 {
 class Event;
 namespace cream {
 
-typedef std::pair<struct TRIGGER_RAW_HDR*, std::vector<uint16_t> > unicastTriggerAndCrateCREAMIDs_type;
+typedef std::pair<struct TRIGGER_RAW_HDR*, std::vector<uint_fast16_t> > unicastTriggerAndCrateCREAMIDs_type;
 
 class L1DistributionHandler: public AExecutable {
 public:
 
 	static void Async_RequestLKRDataMulticast(Event *event, bool zSuppressed);
 	static void Async_RequestLKRDataUnicast(const Event *event, bool zSuppressed,
-			const std::vector<uint16_t> crateCREAMIDs);
+			const std::vector<uint_fast16_t> crateCREAMIDs);
 
 	static inline uint64_t GetL1TriggersSent() {
 		return L1DistributionHandler::L1TriggersSent;
@@ -56,7 +56,7 @@ private:
 
 	/*
 	 * Will cause to send all the Triggers in <triggers> with the given <dataHDR> asynchronously
-	 * @return uint16_t The number of Bytes that will be sent
+	 * @return uint_fast16_t The number of Bytes that will be sent
 	 */
 	static void Async_SendMRP(/*const struct cream::MRP_FRAME_HDR* dataHDR,*/
 			std::vector<struct TRIGGER_RAW_HDR*>& triggers);

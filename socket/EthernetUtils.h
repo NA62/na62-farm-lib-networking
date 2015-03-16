@@ -31,14 +31,14 @@ class NetworkHandler;
 
 struct DataContainer {
 	char * data;
-	uint16_t length;
+	uint_fast16_t length;
 	bool ownerMayFreeData;
 
 	DataContainer() :
 			data(nullptr), length(0), ownerMayFreeData(false) {
 	}
 
-	DataContainer(char* _data, uint16_t _length, bool _ownerMayFreeData) :
+	DataContainer(char* _data, uint_fast16_t _length, bool _ownerMayFreeData) :
 			data(_data), length(_length), ownerMayFreeData(_ownerMayFreeData) {
 	}
 
@@ -118,7 +118,7 @@ public:
 	 * Generates a IPv4/UDP packet
 	 */
 	static UDP_HDR* GenerateUDP(const void* data, const char* dMacAddr,
-			const uint32_t dIP, const uint16_t& sPort, const uint16_t& dPort);
+			const uint32_t dIP, const uint_fast16_t& sPort, const uint_fast16_t& dPort);
 
 	static inline char* GenerateMulticastMac(const uint32_t multicastGroup) {
 		/*
@@ -154,7 +154,7 @@ public:
 
 	static inline DataContainer GenerateARPv4(char * sourceHardwAddr,
 			char * targetHardwAddr, uint32_t sourceIPAddr,
-			uint32_t targetIPAddr, uint16_t operation) {
+			uint32_t targetIPAddr, uint_fast16_t operation) {
 		/*
 		 * We must allocate at least 64 Bytes because of ethernet padding!
 		 */
@@ -189,12 +189,12 @@ public:
 		return (htons(sum));
 	}
 
-	static inline uint16_t GenerateChecksum(const char* data, int len,
+	static inline uint_fast16_t GenerateChecksum(const char* data, int len,
 			uint sum = 0) {
 		return Wrapsum(GenerateChecksumUnwrapped(data, len, sum));
 	}
 
-	static inline uint16_t GenerateChecksumUnwrapped(const char* data, int len,
+	static inline uint_fast16_t GenerateChecksumUnwrapped(const char* data, int len,
 			uint64_t sum = 0) {
 		int steps = len >> 2;
 		while (steps > 0) {
@@ -240,7 +240,7 @@ public:
 //		return (sum);
 	}
 
-	static inline uint16_t GenerateUDPChecksum(struct UDP_HDR* hdr,
+	static inline uint_fast16_t GenerateUDPChecksum(struct UDP_HDR* hdr,
 			uint32_t payloadLength) {
 		hdr->udp.check = 0;
 		return Wrapsum(
@@ -271,7 +271,7 @@ public:
 														hdr->udp.len)))); // the pseudo header (0x00+udp-len+sadd+daddr)
 	}
 
-	static inline bool CheckData(char* data, uint16_t len) {
+	static inline bool CheckData(char* data, uint_fast16_t len) {
 		uint sum = 0;
 		if ((len & 1) == 0) // even
 			len = len >> 1;

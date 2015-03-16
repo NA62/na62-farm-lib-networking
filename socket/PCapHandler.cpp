@@ -2,7 +2,7 @@
  * NetworkHandler.cpp
  *
  *  Created on: Aug 7, 2014
- *      Author: root
+ *      Author: Jonas Kunze (kunze.jonas@gmail.com)
  */
 
 #ifndef USE_PFRING
@@ -119,7 +119,7 @@ namespace na62 {
 		close(socket_);
 	}
 
-	uint16_t NetworkHandler::GetNumberOfQueues() {
+	uint_fast16_t NetworkHandler::GetNumberOfQueues() {
 		return 1;
 	}
 
@@ -137,7 +137,7 @@ namespace na62 {
 	}
 
 	int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
-			u_int pkt_len, uint8_t wait_for_incoming_packet, uint queueNumber) {
+			u_int pkt_len, uint_fast8_t wait_for_incoming_packet, uint queueNumber) {
 		int rc = recvfrom(socket_, (void*) recvBuffer_, BUF_SIZE, 0, NULL, NULL);
 		if (rc == -1) {
 			return 0;
@@ -151,7 +151,7 @@ namespace na62 {
 		return hdr->len;
 	}
 
-	int NetworkHandler::SendFrameConcurrently(uint16_t threadNum, const u_char *pkt,
+	int NetworkHandler::SendFrameConcurrently(uint_fast16_t threadNum, const u_char *pkt,
 			u_int pktLen, bool flush, bool activePoll) {
 
 		framesSent_.fetch_add(1, std::memory_order_relaxed);
@@ -172,7 +172,7 @@ namespace na62 {
 		asyncData_.push(data);
 	}
 
-	int NetworkHandler::DoSendQueuedFrames(uint16_t threadNum) {
+	int NetworkHandler::DoSendQueuedFrames(uint_fast16_t threadNum) {
 		DataContainer data;
 		if (asyncData_.try_pop(data)) {
 			int bytes = SendFrameConcurrently(threadNum, (const u_char*) data.data,
