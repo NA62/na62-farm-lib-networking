@@ -42,7 +42,7 @@ struct UDP_HDR { // 42 byte
 		return ntohs(ip.frag_off) & (IP_OFFMASK | IP_MF);
 	}
 
-	inline uint16_t getFragmentOffsetInBytes() {
+	inline uint_fast16_t getFragmentOffsetInBytes() {
 		/*
 		 * frag_off & IP_OFFMASK stores offset in number of 64-bit words
 		 */
@@ -82,7 +82,7 @@ struct EOB_FULL_FRAME {
 	struct UDP_HDR udp;
 	uint32_t finishedBurstID;
 	uint32_t lastEventNum :24;
-	uint8_t reserved;
+	uint_fast8_t reserved;
 }__attribute__ ((__packed__));
 
 } /* namespace na62 */

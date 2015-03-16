@@ -75,7 +75,7 @@ bool zSuppressed) {
 }
 
 void L1DistributionHandler::Async_RequestLKRDataUnicast(const Event *event,
-bool zSuppressed, const std::vector<uint16_t> crateCREAMIDs) {
+bool zSuppressed, const std::vector<uint_fast16_t> crateCREAMIDs) {
 //	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
 //			zSuppressed);
 //	auto pair = std::make_pair(triggerHDR, crateCREAMIDs);
@@ -225,7 +225,7 @@ void L1DistributionHandler::Async_SendMRP(
 /*const struct cream::MRP_FRAME_HDR* dataHDR,*/
 std::vector<struct TRIGGER_RAW_HDR*>& triggers) {
 
-	uint16_t offset = sizeof(struct cream::MRP_FRAME_HDR);
+	uint_fast16_t offset = sizeof(struct cream::MRP_FRAME_HDR);
 
 	const uint sizeOfMRP = offset
 			+ sizeof(struct cream::TRIGGER_RAW_HDR)
