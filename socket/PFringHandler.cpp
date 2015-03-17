@@ -42,7 +42,7 @@ std::string NetworkHandler::deviceName_ = "";
 tbb::concurrent_bounded_queue<DataContainer> NetworkHandler::asyncSendData_;
 
 std::vector<char> NetworkHandler::myMac_;
-uint32_t NetworkHandler::myIP_;
+uint_fast32_t NetworkHandler::myIP_;
 
 static ntop::PFring ** queueRings_; // one ring per queue
 

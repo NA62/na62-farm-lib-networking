@@ -38,7 +38,7 @@ namespace na62 {
 	static struct sockaddr_ll socket_address_;
 
 	std::vector<char> NetworkHandler::myMac_;
-	uint32_t NetworkHandler::myIP_;
+	uint_fast32_t NetworkHandler::myIP_;
 
 	static u_char* recvBuffer_ = new u_char[BUF_SIZE];
 

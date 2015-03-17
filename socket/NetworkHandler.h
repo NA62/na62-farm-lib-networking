@@ -86,7 +86,7 @@ public:
 
 private:
 	static std::vector<char> myMac_;
-	static uint32_t myIP_;
+	static uint_fast32_t myIP_;
 
 	static std::atomic<uint64_t> bytesReceived_;
 	static std::atomic<uint64_t> framesReceived_;

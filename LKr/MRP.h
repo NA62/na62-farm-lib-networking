@@ -28,11 +28,11 @@ namespace cream {
 struct TRIGGER_RAW_HDR {
 	uint32_t timestamp;
 
-	uint_fast8_t fineTime;
-	uint_fast8_t requestZeroSuppressed; // lowest bit 1 to request zero suppressed data
-	uint_fast16_t triggerTypeWord;
+	uint8_t fineTime;
+	uint8_t requestZeroSuppressed; // lowest bit 1 to request zero suppressed data
+	uint16_t triggerTypeWord;
 
-	uint_fast8_t reserved2;
+	uint8_t reserved2;
 	uint32_t eventNumber :24;
 }__attribute__ ((__packed__));
 
@@ -40,8 +40,8 @@ struct TRIGGER_RAW_HDR {
  * Defines the structure of a L1 MRP header as defined in table 4 in NA62-11-02.
  */
 struct MRP_RAW_HDR {
-	uint_fast16_t numberOfTriggers;
-	uint_fast16_t MRPLength;
+	uint16_t numberOfTriggers;
+	uint16_t MRPLength;
 
 	uint32_t ipAddress;
 
@@ -91,11 +91,11 @@ struct MRP_FRAME_HDR {
  * Defines the structure of a L1 trigger element as defined in table 4 in NA62-11-02.
  */
 struct TRIGGER_RAW_HDR {
-	uint32_t timestamp;
+	uint_fast32_t timestamp;
 	uint_fast16_t triggerTypeWord;
 	uint_fast8_t requestZeroSuppressed; // lowest bit 1 to request zero suppressed data
 	uint_fast8_t fineTime;
-	uint32_t eventNumber :24;
+	uint_fast32_t eventNumber :24;
 	uint_fast8_t reserved2;
 }__attribute__ ((__packed__));
 
@@ -105,8 +105,8 @@ struct TRIGGER_RAW_HDR {
 struct MRP_RAW_HDR {
 	uint_fast16_t MRPLength;
 	uint_fast16_t numberOfTriggers;
-	uint32_t ipAddress;
-	uint32_t reserved;
+	uint_fast32_t ipAddress;
+	uint_fast32_t reserved;
 
 	void SetNumberOfTriggers(uint_fast16_t triggerNum) {
 		numberOfTriggers = triggerNum;

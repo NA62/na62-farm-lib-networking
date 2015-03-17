@@ -110,7 +110,7 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 		cream::MRP_FRAME_HDR* hdr = new struct cream::MRP_FRAME_HDR();
 		CREAM_MulticastRequestHdrs.push_back(hdr);
 
-		const uint32_t multicastGroup = inet_addr(multicastIP.data());
+		const uint_fast32_t multicastGroup = inet_addr(multicastIP.data());
 
 		EthernetUtils::GenerateUDP((char*) hdr,
 				EthernetUtils::GenerateMulticastMac(multicastGroup),
@@ -164,7 +164,7 @@ void L1DistributionHandler::thread() {
 //		for (int thread = NUMBER_OF_EBS - 1; thread != -1; thread--) { // every EB thread
 //			while (unicastMRPWithIPsQueues[thread].pop(
 //					unicastMRPWithCrateCREAMID)) { // every entry in the EBs queue containing MRP+list of IPs
-//				for (uint32_t localCREAMID : unicastMRPWithCrateCREAMID.second) { // every IP
+//				for (uint_fast32_t localCREAMID : unicastMRPWithCrateCREAMID.second) { // every IP
 //					/*
 //					 * Add the MRP to unicastRequestsByIP with IP as key
 //					 */

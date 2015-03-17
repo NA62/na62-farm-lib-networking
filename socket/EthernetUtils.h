@@ -118,9 +118,9 @@ public:
 	 * Generates a IPv4/UDP packet
 	 */
 	static UDP_HDR* GenerateUDP(const void* data, const char* dMacAddr,
-			const uint32_t dIP, const uint_fast16_t& sPort, const uint_fast16_t& dPort);
+			const uint_fast32_t dIP, const uint_fast16_t& sPort, const uint_fast16_t& dPort);
 
-	static inline char* GenerateMulticastMac(const uint32_t multicastGroup) {
+	static inline char* GenerateMulticastMac(const uint_fast32_t multicastGroup) {
 		/*
 		 * The first three bytes of a multicast MAC are 01 00 5e
 		 *
@@ -133,8 +133,8 @@ public:
 		/*
 		 * The we have one Zero bit and the last 23 bits of the multicast group -> &0xffff7f00
 		 */
-		uint32_t addr = (multicastGroup);
-		uint32_t multicastIP = (addr & 0xffff7f00);
+		uint_fast32_t addr = (multicastGroup);
+		uint_fast32_t multicastIP = (addr & 0xffff7f00);
 
 		memcpy(&macAddress[0] + 3, ((char*) &multicastIP) + 1, 3);
 
@@ -145,7 +145,7 @@ public:
 	 * Generates a Gratuitous ARP packet for Ethernet with IPv4
 	 */
 	static inline DataContainer GenerateGratuitousARPv4(char * sourceHardwAddr,
-			uint32_t sourceIPAddr) {
+			uint_fast32_t sourceIPAddr) {
 		char destMac[ETH_ALEN];
 		memset(destMac, 0, ETH_ALEN);
 		return GenerateARPv4(sourceHardwAddr, destMac, sourceIPAddr,
@@ -153,8 +153,8 @@ public:
 	}
 
 	static inline DataContainer GenerateARPv4(char * sourceHardwAddr,
-			char * targetHardwAddr, uint32_t sourceIPAddr,
-			uint32_t targetIPAddr, uint_fast16_t operation) {
+			char * targetHardwAddr, uint_fast32_t sourceIPAddr,
+			uint_fast32_t targetIPAddr, uint_fast16_t operation) {
 		/*
 		 * We must allocate at least 64 Bytes because of ethernet padding!
 		 */
@@ -198,14 +198,14 @@ public:
 			uint64_t sum = 0) {
 		int steps = len >> 2;
 		while (steps > 0) {
-			sum += ntohl(*((uint32_t *) data));
-			data += sizeof(uint32_t);
+			sum += ntohl(*((uint_fast32_t *) data));
+			data += sizeof(uint_fast32_t);
 			--steps;
 		}
 
-		if (len % sizeof(uint32_t) != 0) {
-			uint remaining = len % sizeof(uint32_t);
-			uint32_t add = 0;
+		if (len % sizeof(uint_fast32_t) != 0) {
+			uint remaining = len % sizeof(uint_fast32_t);
+			uint_fast32_t add = 0;
 			while (remaining-- > 0) {
 				add += *(data++); // read next byte
 				add = add << 8; // move all bytes to the left
@@ -241,7 +241,7 @@ public:
 	}
 
 	static inline uint_fast16_t GenerateUDPChecksum(struct UDP_HDR* hdr,
-			uint32_t payloadLength) {
+			uint_fast32_t payloadLength) {
 		hdr->udp.check = 0;
 		return Wrapsum(
 				GenerateChecksumUnwrapped((const char *) &hdr->udp,
@@ -257,7 +257,7 @@ public:
 	}
 
 	static inline bool CheckUDP(struct UDP_HDR* hdr, const char* udpPayload,
-			uint32_t length) {
+			uint_fast32_t length) {
 		return 0xFFFF
 				== GenerateChecksumUnwrapped((const char *) &hdr->udp,
 						sizeof(udphdr), // The UDP header
