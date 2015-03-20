@@ -30,12 +30,12 @@
 
 namespace na62 {
 namespace cream {
-tbb::concurrent_queue<struct TRIGGER_RAW_HDR*> L1DistributionHandler::multicastMRPQueue;
+tbb::concurrent_queue<TRIGGER_RAW_HDR*> L1DistributionHandler::multicastMRPQueue;
 
 //ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* L1DistributionHandler::unicastMRPWithIPsQueues;
 
-std::vector<struct cream::MRP_FRAME_HDR*> L1DistributionHandler::CREAM_MulticastRequestHdrs;
-struct cream::MRP_FRAME_HDR* L1DistributionHandler::CREAM_UnicastRequestHdr;
+std::vector<cream::MRP_FRAME_HDR*> L1DistributionHandler::CREAM_MulticastRequestHdrs;
+cream::MRP_FRAME_HDR* L1DistributionHandler::CREAM_UnicastRequestHdr;
 
 uint64_t L1DistributionHandler::L1TriggersSent = 0;
 uint64_t L1DistributionHandler::L1MRPsSent = 0;
@@ -43,10 +43,9 @@ uint L1DistributionHandler::NUMBER_OF_EBS = 0;
 uint L1DistributionHandler::MAX_TRIGGERS_PER_L1MRP = 0;
 uint L1DistributionHandler::MIN_USEC_BETWEEN_L1_REQUESTS = 0;
 
-struct cream::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event,
+cream::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event,
 bool zSuppressed) {
-	struct cream::TRIGGER_RAW_HDR* triggerHDR =
-			new struct cream::TRIGGER_RAW_HDR();
+	cream::TRIGGER_RAW_HDR* triggerHDR = new cream::TRIGGER_RAW_HDR();
 #ifdef __USE_BIG_ENDIAN_FOR_MRP
 	triggerHDR->timestamp = htonl(event->getTimestamp());
 	triggerHDR->fineTime = event->getFinetime();
@@ -65,8 +64,7 @@ bool zSuppressed) {
 
 void L1DistributionHandler::Async_RequestLKRDataMulticast(Event * event,
 bool zSuppressed) {
-	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
-			zSuppressed);
+	cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event, zSuppressed);
 
 	/*
 	 * FIXME: The blocking here is quite bad as this method is called for every accepted event
@@ -76,7 +74,7 @@ bool zSuppressed) {
 
 void L1DistributionHandler::Async_RequestLKRDataUnicast(const Event *event,
 bool zSuppressed, const std::vector<uint_fast16_t> crateCREAMIDs) {
-//	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
+//	 cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
 //			zSuppressed);
 //	auto pair = std::make_pair(triggerHDR, crateCREAMIDs);
 //	while (!unicastMRPWithIPsQueues[threadNum].push(pair)) {
@@ -107,7 +105,7 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 //	}
 
 	for (std::string multicastIP : multicastGroupNames) {
-		cream::MRP_FRAME_HDR* hdr = new struct cream::MRP_FRAME_HDR();
+		cream::MRP_FRAME_HDR* hdr = new cream::MRP_FRAME_HDR();
 		CREAM_MulticastRequestHdrs.push_back(hdr);
 
 		const uint_fast32_t multicastGroup = inet_addr(multicastIP.data());
@@ -120,7 +118,7 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 		hdr->MRP_HDR.reserved = 0;
 	}
 
-	CREAM_UnicastRequestHdr = new struct cream::MRP_FRAME_HDR();
+	CREAM_UnicastRequestHdr = new cream::MRP_FRAME_HDR();
 	/*
 	 * TODO: The router MAC has to be set here:
 	 */
@@ -139,8 +137,8 @@ void L1DistributionHandler::thread() {
 	 * We need all MRPs for each CREAM  but the multicastMRPQueues stores it in the opposite order (one MRP, several CREAMs).
 	 * Therefore we will fill the following map and later  produce unicast IP packets with it
 	 */
-//	std::vector<struct TRIGGER_RAW_HDR*> unicastRequestsByCrateCREAMID[SourceIDManager::NUMBER_OF_EXPECTED_CREAM_PACKETS_PER_EVENT];
-	std::vector<struct TRIGGER_RAW_HDR*> multicastRequests;
+//	std::vector< TRIGGER_RAW_HDR*> unicastRequestsByCrateCREAMID[SourceIDManager::NUMBER_OF_EXPECTED_CREAM_PACKETS_PER_EVENT];
+	std::vector<TRIGGER_RAW_HDR*> multicastRequests;
 	multicastRequests.reserve(MAX_TRIGGERS_PER_L1MRP);
 
 	while (true) {
@@ -150,7 +148,7 @@ void L1DistributionHandler::thread() {
 
 		while (multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP
 				&& !multicastMRPQueue.empty()) {
-			struct TRIGGER_RAW_HDR* hdr;
+			TRIGGER_RAW_HDR* hdr;
 			while (!multicastMRPQueue.try_pop(hdr)) {
 				usleep(10);
 			}
@@ -192,7 +190,7 @@ void L1DistributionHandler::thread() {
 //			for (int i =
 //					SourceIDManager::NUMBER_OF_EXPECTED_CREAM_PACKETS_PER_EVENT
 //							- 1; i != -1; i--) {
-//				std::vector<struct TRIGGER_RAW_HDR*> triggers =
+//				std::vector< TRIGGER_RAW_HDR*> triggers =
 //						unicastRequestsByCrateCREAMID[i];
 //				if (triggers.size() > 0) {
 //					Async_SendMRP(CREAM_UnicastRequestHdr, triggers);
@@ -213,7 +211,7 @@ void L1DistributionHandler::thread() {
 			}
 		}
 	}
-	LOG_ERROR << "Unexpected exit of L1DistributionHandler thread" << ENDL;
+	LOG_ERROR<< "Unexpected exit of L1DistributionHandler thread" << ENDL;
 	exit(1);
 }
 
@@ -222,13 +220,13 @@ void L1DistributionHandler::thread() {
  * will be queued to be sent by the PacketHandlers
  */
 void L1DistributionHandler::Async_SendMRP(
-/*const struct cream::MRP_FRAME_HDR* dataHDR,*/
-std::vector<struct TRIGGER_RAW_HDR*>& triggers) {
+/*const cream::MRP_FRAME_HDR* dataHDR,*/
+std::vector<TRIGGER_RAW_HDR*>& triggers) {
 
-	uint_fast16_t offset = sizeof(struct cream::MRP_FRAME_HDR);
+	uint_fast16_t offset = sizeof(cream::MRP_FRAME_HDR);
 
 	const uint sizeOfMRP = offset
-			+ sizeof(struct cream::TRIGGER_RAW_HDR)
+			+ sizeof(cream::TRIGGER_RAW_HDR)
 					* (triggers.size() > MAX_TRIGGERS_PER_L1MRP ?
 							MAX_TRIGGERS_PER_L1MRP : triggers.size());
 
@@ -237,35 +235,31 @@ std::vector<struct TRIGGER_RAW_HDR*>& triggers) {
 	 */
 	char* buff = new char[sizeOfMRP];
 
-
-
 	uint numberOfTriggers = 0;
 	while (triggers.size() != 0 && numberOfTriggers != MAX_TRIGGERS_PER_L1MRP) {
-		struct TRIGGER_RAW_HDR* trigger = triggers.back();
+		TRIGGER_RAW_HDR* trigger = triggers.back();
 		triggers.pop_back();
 
 		memcpy(reinterpret_cast<char*>(buff) + offset, trigger,
-				sizeof(struct cream::TRIGGER_RAW_HDR));
-		offset += sizeof(struct cream::TRIGGER_RAW_HDR);
+				sizeof(cream::TRIGGER_RAW_HDR));
+		offset += sizeof(cream::TRIGGER_RAW_HDR);
 
 		delete trigger;
 		numberOfTriggers++;
 	}
 
-
 	for (auto dataHDR : CREAM_MulticastRequestHdrs) {
 		char* frame = new char[offset];
 		memcpy(frame, buff, offset);
 		memcpy(frame, reinterpret_cast<const char*>(dataHDR),
-				sizeof(struct cream::MRP_FRAME_HDR));
+				sizeof(cream::MRP_FRAME_HDR));
 
-		struct cream::MRP_FRAME_HDR* dataHDRToBeSent =
-				(struct cream::MRP_FRAME_HDR*) frame;
+		cream::MRP_FRAME_HDR* dataHDRToBeSent = (cream::MRP_FRAME_HDR*) frame;
 		dataHDRToBeSent->SetNumberOfTriggers(numberOfTriggers);
 
 		dataHDRToBeSent->udp.ip.check = 0;
 		dataHDRToBeSent->udp.ip.check = EthernetUtils::GenerateChecksum(
-				(const char*) (&dataHDRToBeSent->udp.ip), sizeof(struct iphdr));
+				(const char*) (&dataHDRToBeSent->udp.ip), sizeof(iphdr));
 		dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
 				&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
