@@ -31,14 +31,14 @@ class NetworkHandler;
 
 struct DataContainer {
 	char * data;
-	uint16_t length;
+	uint_fast16_t length;
 	bool ownerMayFreeData;
 
 	DataContainer() :
 			data(nullptr), length(0), ownerMayFreeData(false) {
 	}
 
-	DataContainer(char* _data, uint16_t _length, bool _ownerMayFreeData) :
+	DataContainer(char* _data, uint_fast16_t _length, bool _ownerMayFreeData) :
 			data(_data), length(_length), ownerMayFreeData(_ownerMayFreeData) {
 	}
 
@@ -88,7 +88,7 @@ struct DataContainer {
 		return *this;
 	}
 
-	void free() {
+	void inline free() {
 		if (ownerMayFreeData) {
 			delete[] data;
 		}
@@ -279,8 +279,8 @@ public:
 			// uneven
 			len = (len >> 1) + 1;
 		while (len > 0) {
-			sum += *((ushort*) data);
-			data += sizeof(ushort);
+			sum += *((uint16_t*) data);
+			data += sizeof(uint16_t);
 			len--;
 		}
 		sum = (sum >> 16) + (sum & 0xffff);

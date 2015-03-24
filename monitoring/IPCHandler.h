@@ -62,6 +62,14 @@ private:
 	static zmq::socket_t* stateReceiver_;
 	static zmq::socket_t* statisticsReceiver_;
 	static zmq::socket_t* commandReceiver_;
+
+	static bool stateSenderActive_;
+	static bool statisticsSenderActive_;
+	static bool commandSenderActive_;
+
+	static bool stateReceiverActive_;
+	static bool statisticsReceiverActive_;
+	static bool commandReceiverActive_;
 };
 
 } /* namespace na62 */

@@ -7,8 +7,8 @@
 
 #include "DimListener.h"
 
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/lexical_cast.hpp>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <csignal>
@@ -25,7 +25,8 @@ DimListener::DimListener() :
 		nextBurstNumber_("RunControl/NextBurstNumber", -1, this), burstNumber_(
 				"RunControl/BurstNumber", -1, this), runNumber_(
 				"RunControl/RunNumber", -1, this), SOB_TS_("NA62/Timing/SOB", 0,
-				this), EOB_TS_("NA62/Timing/EOB", 0, this) , thread(nullptr){
+				this), EOB_TS_("NA62/Timing/EOB", 0, this), runningMerger_(
+				"RunControl/RunningMergers", (char*) "", this), thread(nullptr) {
 
 //	int runNumber = 0;
 //	if (runNumber_.getSize() <= 0) {
@@ -57,6 +58,16 @@ uint DimListener::getNextBurstNumber() {
 	return nextBurstNumber_.getInt();
 }
 
+std::string DimListener::getRunningMergers() {
+	if (runningMerger_.getSize() != 0) {
+		std::string runningMergerList((char*) runningMerger_.getData(),
+				runningMerger_.getSize() - 1);
+		boost::trim(runningMergerList); // trim the string to remove any outer whitespace
+		return runningMergerList;
+	}
+	return "";
+}
+
 void DimListener::infoHandler() {
 	DimInfo *curr = getInfo();
 	if (curr == &EOB_TS_) {
@@ -64,31 +75,35 @@ void DimListener::infoHandler() {
 		for (auto callback : eobCallbacks) {
 			callback(eob);
 		}
-		std::cout << "Updating EOB timestamp to " << eob << std::endl;
 	} else if (curr == &SOB_TS_) {
 		uint sob = SOB_TS_.getInt();
 		for (auto callback : sobCallbacks) {
 			callback(sob);
 		}
-		std::cout << "Updating SOB timestamp to " << sob << std::endl;
 	} else if (curr == &runNumber_) {
 		uint runNumber = runNumber_.getInt();
 		for (auto callback : runNumberCallbacks) {
 			callback(runNumber);
 		}
-		std::cout << "Updating RunNumber to " << runNumber << std::endl;
 	} else if (curr == &burstNumber_) {
 		uint burstID = burstNumber_.getInt();
 		for (auto callback : burstNumberCallbacks) {
 			callback(burstID);
 		}
-		std::cout << "Updating burstID to " << burstID << std::endl;
 	} else if (curr == &nextBurstNumber_) {
 		uint burstID = nextBurstNumber_.getInt();
 		for (auto callback : nextBurstNumberCallbacks) {
 			callback(burstID);
 		}
-		std::cout << "Updating nextBurstID to " << burstID << std::endl;
+	} else if (curr == &runningMerger_) {
+		if (runningMerger_.getSize() != 0) {
+			std::string runningMergerList((char*) runningMerger_.getData(),
+					runningMerger_.getSize() - 1);
+			boost::trim(runningMergerList); // trim the string to remove any outer whitespace
+			for (auto callback : runningMergerCallbacks) {
+				callback(runningMergerList);
+			}
+		}
 	}
 }
 

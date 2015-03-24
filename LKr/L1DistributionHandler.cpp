@@ -33,12 +33,12 @@
 
 namespace na62 {
 namespace cream {
-tbb::concurrent_queue<struct TRIGGER_RAW_HDR*> L1DistributionHandler::multicastMRPQueue;
+tbb::concurrent_queue<TRIGGER_RAW_HDR*> L1DistributionHandler::multicastMRPQueue;
 
 //ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* L1DistributionHandler::unicastMRPWithIPsQueues;
 
-struct cream::MRP_FRAME_HDR* L1DistributionHandler::CREAM_MulticastRequestHdr;
-struct cream::MRP_FRAME_HDR* L1DistributionHandler::CREAM_UnicastRequestHdr;
+std::vector<cream::MRP_FRAME_HDR*> L1DistributionHandler::CREAM_MulticastRequestHdrs;
+cream::MRP_FRAME_HDR* L1DistributionHandler::CREAM_UnicastRequestHdr;
 
 uint64_t L1DistributionHandler::L1TriggersSent = 0;
 uint64_t L1DistributionHandler::L1MRPsSent = 0;
@@ -48,10 +48,9 @@ uint L1DistributionHandler::MIN_USEC_BETWEEN_L1_REQUESTS = 0;
 
 zmq::socket_t* L1DistributionHandler::dispatcherSocket_;
 
-struct cream::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event,
+cream::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event,
 bool zSuppressed) {
-	struct cream::TRIGGER_RAW_HDR* triggerHDR =
-			new struct cream::TRIGGER_RAW_HDR();
+	cream::TRIGGER_RAW_HDR* triggerHDR = new cream::TRIGGER_RAW_HDR();
 #ifdef __USE_BIG_ENDIAN_FOR_MRP
 	triggerHDR->timestamp = htonl(event->getTimestamp());
 	triggerHDR->fineTime = event->getFinetime();
@@ -74,8 +73,7 @@ void L1DistributionHandler::onInterruption() {
 
 void L1DistributionHandler::Async_RequestLKRDataMulticast(Event * event,
 bool zSuppressed) {
-	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
-			zSuppressed);
+	cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event, zSuppressed);
 
 	/*
 	 * FIXME: The blocking here is quite bad as this method is called for every accepted event
@@ -84,19 +82,20 @@ bool zSuppressed) {
 }
 
 void L1DistributionHandler::Async_RequestLKRDataUnicast(const Event *event,
-bool zSuppressed, const std::vector<uint16_t> crateCREAMIDs) {
-//	struct cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
+bool zSuppressed, const std::vector<uint_fast16_t> crateCREAMIDs) {
+//	 cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
 //			zSuppressed);
 //	auto pair = std::make_pair(triggerHDR, crateCREAMIDs);
 //	while (!unicastMRPWithIPsQueues[threadNum].push(pair)) {
-//		LOG(ERROR)<<"L1DistributionHandler input queue overrun!";
+//		LOG_ERROR<<"L1DistributionHandler input queue overrun!";
 //		usleep(1000);
 //	}
 }
 
 void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
-		uint minUsecBetweenL1Requests, std::string multicastGroupName,
-		uint sourcePort, uint destinationPort, std::string dispatcherAddress) {
+		uint minUsecBetweenL1Requests,
+		std::vector<std::string> multicastGroupNames, uint sourcePort,
+		uint destinationPort, std::string dispatcherAddress) {
 	MAX_TRIGGERS_PER_L1MRP = maxTriggersPerMRP;
 	NUMBER_OF_EBS = numberOfEBs;
 	MIN_USEC_BETWEEN_L1_REQUESTS = minUsecBetweenL1Requests;
@@ -114,14 +113,21 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 //				unicastTriggerAndCrateCREAMIDs_type>(100000);
 //	}
 
-	CREAM_MulticastRequestHdr = new struct cream::MRP_FRAME_HDR();
-	CREAM_UnicastRequestHdr = new struct cream::MRP_FRAME_HDR();
+	for (std::string multicastIP : multicastGroupNames) {
+		cream::MRP_FRAME_HDR* hdr = new cream::MRP_FRAME_HDR();
+		CREAM_MulticastRequestHdrs.push_back(hdr);
 
-	const uint32_t multicastGroup = inet_addr(multicastGroupName.data());
-	EthernetUtils::GenerateUDP((char*) CREAM_MulticastRequestHdr,
-			EthernetUtils::GenerateMulticastMac(multicastGroup), multicastGroup,
-			sourcePort, destinationPort);
+		const uint_fast32_t multicastGroup = inet_addr(multicastIP.data());
 
+		EthernetUtils::GenerateUDP((char*) hdr,
+				EthernetUtils::GenerateMulticastMac(multicastGroup),
+				multicastGroup, sourcePort, destinationPort);
+
+		hdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
+		hdr->MRP_HDR.reserved = 0;
+	}
+
+	CREAM_UnicastRequestHdr = new cream::MRP_FRAME_HDR();
 	/*
 	 * TODO: The router MAC has to be set here:
 	 */
@@ -129,13 +135,10 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
 			EthernetUtils::StringToMAC("00:11:22:33:44:55"),
 			0/*Will be set later*/, sourcePort, destinationPort);
 
-	CREAM_MulticastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
-	CREAM_MulticastRequestHdr->MRP_HDR.reserved = 0;
-
 	CREAM_UnicastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 	CREAM_UnicastRequestHdr->MRP_HDR.reserved = 0;
 
-	dispatcherSocket_ = ZMQHandler::GenerateSocket(ZMQ_PUSH);
+	dispatcherSocket_ = ZMQHandler::GenerateSocket("dispatcher", ZMQ_PUSH);
 	dispatcherSocket_->connect(dispatcherAddress.c_str());
 
 //	EthernetUtils::GenerateUDP(CREAM_RequestBuff, EthernetUtils::StringToMAC("00:15:17:b2:26:fa"), "10.0.4.3", sPort, dPort);
@@ -146,8 +149,8 @@ void L1DistributionHandler::thread() {
 	 * We need all MRPs for each CREAM  but the multicastMRPQueues stores it in the opposite order (one MRP, several CREAMs).
 	 * Therefore we will fill the following map and later  produce unicast IP packets with it
 	 */
-//	std::vector<struct TRIGGER_RAW_HDR*> unicastRequestsByCrateCREAMID[SourceIDManager::NUMBER_OF_EXPECTED_CREAM_PACKETS_PER_EVENT];
-	std::vector<struct TRIGGER_RAW_HDR*> multicastRequests;
+//	std::vector< TRIGGER_RAW_HDR*> unicastRequestsByCrateCREAMID[SourceIDManager::NUMBER_OF_EXPECTED_CREAM_PACKETS_PER_EVENT];
+	std::vector<TRIGGER_RAW_HDR*> multicastRequests;
 	multicastRequests.reserve(MAX_TRIGGERS_PER_L1MRP);
 
 	while (true) {
@@ -157,7 +160,7 @@ void L1DistributionHandler::thread() {
 
 		while (multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP
 				&& !multicastMRPQueue.empty()) {
-			struct TRIGGER_RAW_HDR* hdr;
+			TRIGGER_RAW_HDR* hdr;
 			while (!multicastMRPQueue.try_pop(hdr)) {
 				usleep(10);
 			}
@@ -171,7 +174,7 @@ void L1DistributionHandler::thread() {
 //		for (int thread = NUMBER_OF_EBS - 1; thread != -1; thread--) { // every EB thread
 //			while (unicastMRPWithIPsQueues[thread].pop(
 //					unicastMRPWithCrateCREAMID)) { // every entry in the EBs queue containing MRP+list of IPs
-//				for (uint32_t localCREAMID : unicastMRPWithCrateCREAMID.second) { // every IP
+//				for (uint_fast32_t localCREAMID : unicastMRPWithCrateCREAMID.second) { // every IP
 //					/*
 //					 * Add the MRP to unicastRequestsByIP with IP as key
 //					 */
@@ -181,7 +184,6 @@ void L1DistributionHandler::thread() {
 //			}
 //		}
 		if (multicastRequests.size() > 0) {
-			Async_SendMRP(CREAM_MulticastRequestHdr, multicastRequests);
 			if (multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP) {
 				/*
 				 * sleep a bit so that next time we have more requests in one MRP
@@ -191,12 +193,14 @@ void L1DistributionHandler::thread() {
 								MIN_USEC_BETWEEN_L1_REQUESTS));
 				continue;
 			}
+
+			Async_SendMRP(multicastRequests);
 		} else {
 			bool didSendUnicastMRPs = false;
 //			for (int i =
 //					SourceIDManager::NUMBER_OF_EXPECTED_CREAM_PACKETS_PER_EVENT
 //							- 1; i != -1; i--) {
-//				std::vector<struct TRIGGER_RAW_HDR*> triggers =
+//				std::vector< TRIGGER_RAW_HDR*> triggers =
 //						unicastRequestsByCrateCREAMID[i];
 //				if (triggers.size() > 0) {
 //					Async_SendMRP(CREAM_UnicastRequestHdr, triggers);
@@ -217,7 +221,7 @@ void L1DistributionHandler::thread() {
 			}
 		}
 	}
-	std::cerr << "Unexpected exit of L1DistributionHandler thread" << std::endl;
+	LOG_ERROR<< "Unexpected exit of L1DistributionHandler thread" << ENDL;
 	exit(1);
 }
 
@@ -226,13 +230,13 @@ void L1DistributionHandler::thread() {
  * will be queued to be sent by the PacketHandlers
  */
 void L1DistributionHandler::Async_SendMRP(
-		const struct cream::MRP_FRAME_HDR* dataHDR,
-		std::vector<struct TRIGGER_RAW_HDR*>& triggers) {
+/*const cream::MRP_FRAME_HDR* dataHDR,*/
+std::vector<TRIGGER_RAW_HDR*>& triggers) {
 
-	uint16_t offset = sizeof(struct cream::MRP_FRAME_HDR);
+	uint_fast16_t offset = sizeof(cream::MRP_FRAME_HDR);
 
 	const uint sizeOfMRP = offset
-			+ sizeof(struct cream::TRIGGER_RAW_HDR)
+			+ sizeof(cream::TRIGGER_RAW_HDR)
 					* (triggers.size() > MAX_TRIGGERS_PER_L1MRP ?
 							MAX_TRIGGERS_PER_L1MRP : triggers.size());
 
@@ -240,30 +244,28 @@ void L1DistributionHandler::Async_SendMRP(
 	 * Copy the dataHDR into a new buffer which will be sent afterwards
 	 */
 	char* buff = new char[sizeOfMRP];
-	memcpy(buff, reinterpret_cast<const char*>(dataHDR),
-			sizeof(struct cream::MRP_FRAME_HDR));
-	struct cream::MRP_FRAME_HDR* dataHDRToBeSent =
-			(struct cream::MRP_FRAME_HDR*) buff;
 
 	uint numberOfTriggers = 0;
 	while (triggers.size() != 0 && numberOfTriggers != MAX_TRIGGERS_PER_L1MRP) {
-		struct TRIGGER_RAW_HDR* trigger = triggers.back();
+		TRIGGER_RAW_HDR* trigger = triggers.back();
 		triggers.pop_back();
 
 		memcpy(reinterpret_cast<char*>(buff) + offset, trigger,
-				sizeof(struct cream::TRIGGER_RAW_HDR));
-		offset += sizeof(struct cream::TRIGGER_RAW_HDR);
+				sizeof(cream::TRIGGER_RAW_HDR));
+		offset += sizeof(cream::TRIGGER_RAW_HDR);
 
 		delete trigger;
 		numberOfTriggers++;
 	}
 
-	dataHDRToBeSent->SetNumberOfTriggers(numberOfTriggers);
-	dataHDRToBeSent->udp.ip.check = 0;
-	dataHDRToBeSent->udp.ip.check = EthernetUtils::GenerateChecksum(
-			(const char*) (&dataHDRToBeSent->udp.ip), sizeof(struct iphdr));
-	dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
-			&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
+	for (auto dataHDR : CREAM_MulticastRequestHdrs) {
+		char* frame = new char[offset];
+		memcpy(frame, buff, offset);
+		memcpy(frame, reinterpret_cast<const char*>(dataHDR),
+				sizeof(cream::MRP_FRAME_HDR));
+
+		cream::MRP_FRAME_HDR* dataHDRToBeSent = (cream::MRP_FRAME_HDR*) frame;
+		dataHDRToBeSent->SetNumberOfTriggers(numberOfTriggers);
 
 //	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //	//				Debug printout
@@ -284,27 +286,27 @@ void L1DistributionHandler::Async_SendMRP(
 //	LOG(ERROR)<< msg.str();
 //	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*
-	 * Send the frame to the L1 dispatcher via ZMQ
-	 */
-	zmq::message_t message(buff, offset,
-			(zmq::free_fn*) ZMQHandler::freeZmqMessage);
-	while (ZMQHandler::IsRunning()) {
-		try {
-			dispatcherSocket_->send(message);
-			break;
-		} catch (const zmq::error_t& ex) {
-			if (ex.num() != EINTR) { // try again if EINTR (signal caught)
-				LOG(ERROR)<< ex.what();
-				ZMQHandler::DestroySocket(dispatcherSocket_);
-				return;
+		/*
+		 * Send the frame to the L1 dispatcher via ZMQ
+		 */
+		zmq::message_t message(buff, offset,
+				(zmq::free_fn*) ZMQHandler::freeZmqMessage);
+		while (ZMQHandler::IsRunning()) {
+			try {
+				dispatcherSocket_->send(message);
+				break;
+			} catch (const zmq::error_t& ex) {
+				if (ex.num() != EINTR) { // try again if EINTR (signal caught)
+					LOG(ERROR)<< ex.what();
+					ZMQHandler::DestroySocket(dispatcherSocket_);
+					return;
+				}
 			}
 		}
-	}
 
-	L1TriggersSent += numberOfTriggers;
-	L1MRPsSent++;
+		L1TriggersSent += numberOfTriggers;
+		L1MRPsSent++;
+	}
 }
-}
-/* namespace cream */
+}/* namespace cream */
 } /* namespace na62 */

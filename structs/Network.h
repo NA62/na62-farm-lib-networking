@@ -42,7 +42,7 @@ struct UDP_HDR { // 42 byte
 		return ntohs(ip.frag_off) & (IP_OFFMASK | IP_MF);
 	}
 
-	inline uint16_t getFragmentOffsetInBytes() {
+	inline uint_fast16_t getFragmentOffsetInBytes() {
 		/*
 		 * frag_off & IP_OFFMASK stores offset in number of 64-bit words
 		 */

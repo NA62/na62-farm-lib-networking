@@ -55,24 +55,24 @@ struct MRP_RAW_HDR { // 12 byte
 		 *  plus the size of a Trigger header times the number of triggers
 		 */
 		const uint16_t length = sizeof(MRP_RAW_HDR)
-				+ triggerNum * sizeof(struct TRIGGER_RAW_HDR);
+				+ triggerNum * sizeof(TRIGGER_RAW_HDR);
 		MRPLength = htons(length);
 	}
 
-	uint16_t getNumberOfTriggers(){
+	uint16_t getNumberOfTriggers() {
 		return ntohs(numberOfTriggers);
 	}
 
-	uint16_t getSize(){
+	uint16_t getSize() {
 		return ntohs(MRPLength);
 	}
 }__attribute__ ((__packed__));
 
 struct MRP_FRAME_HDR { // 54 byte
 
-	struct UDP_HDR udp; // 42 byte
+	UDP_HDR udp;
 
-	struct MRP_RAW_HDR MRP_HDR; // 12 byte
+	MRP_RAW_HDR MRP_HDR;
 
 	void SetNumberOfTriggers(uint16_t triggerNum) {
 		MRP_HDR.SetNumberOfTriggers(triggerNum);
@@ -80,8 +80,8 @@ struct MRP_FRAME_HDR { // 54 byte
 		 * The length of the MRP packet equals the length of the udp payload. So this is 8 (the length of this header)
 		 *  plus the size of a Trigger header times the number of triggers
 		 */
-		const uint16_t length = sizeof(struct MRP_RAW_HDR)
-				+ triggerNum * sizeof(struct TRIGGER_RAW_HDR);
+		const uint16_t length = sizeof(MRP_RAW_HDR)
+				+ triggerNum * sizeof(TRIGGER_RAW_HDR);
 		udp.setPayloadSize(length);
 	}
 }__attribute__ ((__packed__));
@@ -115,7 +115,7 @@ struct MRP_RAW_HDR {
 		 * The length of the MRP packet equals the length of the udp payload. So this is 8 (the length of this header)
 		 *  plus the size of a Trigger header times the number of triggers
 		 */
-		const uint16_t length = sizeof(MRP_RAW_HDR) + triggerNum * sizeof(struct TRIGGER_RAW_HDR);
+		const uint16_t length = sizeof(MRP_RAW_HDR) + triggerNum * sizeof(TRIGGER_RAW_HDR);
 		MRPLength = length;
 	}
 }__attribute__ ((__packed__));
@@ -123,10 +123,10 @@ struct MRP_RAW_HDR {
 struct MRP_FRAME_HDR {
 
 #ifdef __USE_PFRING_FOR_MRP
-	struct UDP_HDR udp;
+	UDP_HDR udp;
 #endif
 
-	struct MRP_RAW_HDR MRP_HDR;
+	MRP_RAW_HDR MRP_HDR;
 
 	void SetNumberOfTriggers(uint16_t triggerNum) {
 		MRP_HDR.SetNumberOfTriggers(triggerNum);
@@ -135,7 +135,7 @@ struct MRP_FRAME_HDR {
 		 * The length of the MRP packet equals the length of the udp payload. So this is 8 (the length of this header)
 		 *  plus the size of a Trigger header times the number of triggers
 		 */
-		const uint16_t length = 8 + triggerNum * sizeof(struct TRIGGER_RAW_HDR);
+		const uint16_t length = 8 + triggerNum * sizeof(TRIGGER_RAW_HDR);
 		udp.setPayloadSize(length);
 #endif
 	}

@@ -28,7 +28,7 @@ public:
 	virtual ~NetworkHandler();
 
 	static int GetNextFrame(struct pfring_pkthdr *hdr, char** pkt,
-			u_int pkt_len, uint8_t wait_for_incoming_packet, uint queueNumber);
+			u_int pkt_len, uint_fast8_t wait_for_incoming_packet, uint queueNumber);
 
 	static std::string GetDeviceName();
 
@@ -43,14 +43,14 @@ public:
 	 *
 	 * This should only be called by a PacketHandler thread to ensure thread safety.
 	 */
-	static int DoSendQueuedFrames(uint16_t threadNum);
+	static int DoSendQueuedFrames(uint_fast16_t threadNum);
 
-	static int SendFrameConcurrently(uint16_t threadNum, const u_char *pkt,
+	static int SendFrameConcurrently(uint_fast16_t threadNum, const u_char *pkt,
 			u_int pktLen, bool flush = true, bool activePoll = true);
 
 	static void PrintStats();
 
-	static uint16_t GetNumberOfQueues();
+	static uint_fast16_t GetNumberOfQueues();
 
 	/**
 	 * Returns the 6 byte long hardware address of the NIC the PFring object is assigned to.
@@ -86,12 +86,12 @@ public:
 
 private:
 	static std::vector<char> myMac_;
-	static uint32_t myIP_;
+	static uint_fast32_t myIP_;
 
 	static std::atomic<uint64_t> bytesReceived_;
 	static std::atomic<uint64_t> framesReceived_;
 	static std::atomic<uint64_t> framesSent_;
-	static uint16_t numberOfQueues_;
+	static uint_fast16_t numberOfQueues_;
 	static std::string deviceName_;
 
 	static tbb::concurrent_bounded_queue<DataContainer> asyncSendData_;
