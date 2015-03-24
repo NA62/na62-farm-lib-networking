@@ -94,7 +94,7 @@ u_int32_t EthernetUtils::GetIPOfInterface(std::string iface) {
 	return (u_int32_t) ((struct sockaddr_in *) &ifr.ifr_addr)->sin_addr.s_addr;
 }
 
-UDP_HDR* EthernetUtils::GenerateUDP(const void* buffer, const char* dMacAddr, const uint_fast32_t dIP, const uint_fast16_t& sPort, const uint_fast16_t& dPort) {
+UDP_HDR* EthernetUtils::GenerateUDP(const void* buffer, const char* dMacAddr, const uint32_t dIP, const uint16_t& sPort, const uint16_t& dPort) {
 	struct UDP_HDR* hdr = (struct UDP_HDR*) buffer;
 
 	hdr->eth.ether_type = htons(ETHERTYPE_IP);

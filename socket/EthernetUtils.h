@@ -31,14 +31,14 @@ class NetworkHandler;
 
 struct DataContainer {
 	char * data;
-	uint_fast16_t length;
+	uint16_t length;
 	bool ownerMayFreeData;
 
 	DataContainer() :
 			data(nullptr), length(0), ownerMayFreeData(false) {
 	}
 
-	DataContainer(char* _data, uint_fast16_t _length, bool _ownerMayFreeData) :
+	DataContainer(char* _data, uint16_t _length, bool _ownerMayFreeData) :
 			data(_data), length(_length), ownerMayFreeData(_ownerMayFreeData) {
 	}
 
@@ -118,9 +118,9 @@ public:
 	 * Generates a IPv4/UDP packet
 	 */
 	static UDP_HDR* GenerateUDP(const void* data, const char* dMacAddr,
-			const uint_fast32_t dIP, const uint_fast16_t& sPort, const uint_fast16_t& dPort);
+			const uint32_t dIP, const uint16_t& sPort, const uint16_t& dPort);
 
-	static inline char* GenerateMulticastMac(const uint_fast32_t multicastGroup) {
+	static inline char* GenerateMulticastMac(const uint32_t multicastGroup) {
 		/*
 		 * The first three bytes of a multicast MAC are 01 00 5e
 		 *
@@ -133,8 +133,8 @@ public:
 		/*
 		 * The we have one Zero bit and the last 23 bits of the multicast group -> &0xffff7f00
 		 */
-		uint_fast32_t addr = (multicastGroup);
-		uint_fast32_t multicastIP = (addr & 0xffff7f00);
+		uint32_t addr = (multicastGroup);
+		uint32_t multicastIP = (addr & 0xffff7f00);
 
 		memcpy(&macAddress[0] + 3, ((char*) &multicastIP) + 1, 3);
 
@@ -145,7 +145,7 @@ public:
 	 * Generates a Gratuitous ARP packet for Ethernet with IPv4
 	 */
 	static inline DataContainer GenerateGratuitousARPv4(char * sourceHardwAddr,
-			uint_fast32_t sourceIPAddr) {
+			uint32_t sourceIPAddr) {
 		char destMac[ETH_ALEN];
 		memset(destMac, 0, ETH_ALEN);
 		return GenerateARPv4(sourceHardwAddr, destMac, sourceIPAddr,
@@ -153,8 +153,8 @@ public:
 	}
 
 	static inline DataContainer GenerateARPv4(char * sourceHardwAddr,
-			char * targetHardwAddr, uint_fast32_t sourceIPAddr,
-			uint_fast32_t targetIPAddr, uint_fast16_t operation) {
+			char * targetHardwAddr, uint32_t sourceIPAddr,
+			uint32_t targetIPAddr, uint16_t operation) {
 		/*
 		 * We must allocate at least 64 Bytes because of ethernet padding!
 		 */
@@ -189,23 +189,23 @@ public:
 		return (htons(sum));
 	}
 
-	static inline uint_fast16_t GenerateChecksum(const char* data, int len,
+	static inline uint16_t GenerateChecksum(const char* data, int len,
 			uint sum = 0) {
 		return Wrapsum(GenerateChecksumUnwrapped(data, len, sum));
 	}
 
-	static inline uint_fast16_t GenerateChecksumUnwrapped(const char* data, int len,
+	static inline uint16_t GenerateChecksumUnwrapped(const char* data, int len,
 			uint64_t sum = 0) {
 		int steps = len >> 2;
 		while (steps > 0) {
-			sum += ntohl(*((uint_fast32_t *) data));
-			data += sizeof(uint_fast32_t);
+			sum += ntohl(*((uint32_t *) data));
+			data += sizeof(uint32_t);
 			--steps;
 		}
 
-		if (len % sizeof(uint_fast32_t) != 0) {
-			uint remaining = len % sizeof(uint_fast32_t);
-			uint_fast32_t add = 0;
+		if (len % sizeof(uint32_t) != 0) {
+			uint remaining = len % sizeof(uint32_t);
+			uint32_t add = 0;
 			while (remaining-- > 0) {
 				add += *(data++); // read next byte
 				add = add << 8; // move all bytes to the left
@@ -240,8 +240,8 @@ public:
 //		return (sum);
 	}
 
-	static inline uint_fast16_t GenerateUDPChecksum(struct UDP_HDR* hdr,
-			uint_fast32_t payloadLength) {
+	static inline uint16_t GenerateUDPChecksum(struct UDP_HDR* hdr,
+			uint32_t payloadLength) {
 		hdr->udp.check = 0;
 		return Wrapsum(
 				GenerateChecksumUnwrapped((const char *) &hdr->udp,
@@ -257,7 +257,7 @@ public:
 	}
 
 	static inline bool CheckUDP(struct UDP_HDR* hdr, const char* udpPayload,
-			uint_fast32_t length) {
+			uint32_t length) {
 		return 0xFFFF
 				== GenerateChecksumUnwrapped((const char *) &hdr->udp,
 						sizeof(udphdr), // The UDP header
@@ -271,7 +271,7 @@ public:
 														hdr->udp.len)))); // the pseudo header (0x00+udp-len+sadd+daddr)
 	}
 
-	static inline bool CheckData(char* data, uint_fast16_t len) {
+	static inline bool CheckData(char* data, uint16_t len) {
 		uint sum = 0;
 		if ((len & 1) == 0) // even
 			len = len >> 1;
@@ -279,8 +279,8 @@ public:
 			// uneven
 			len = (len >> 1) + 1;
 		while (len > 0) {
-			sum += *((ushort*) data);
-			data += sizeof(ushort);
+			sum += *((uint16_t*) data);
+			data += sizeof(uint16_t);
 			len--;
 		}
 		sum = (sum >> 16) + (sum & 0xffff);
