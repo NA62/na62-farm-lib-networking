@@ -31,14 +31,14 @@ class NetworkHandler;
 
 struct DataContainer {
 	char * data;
-	uint16_t length;
+	uint_fast16_t length;
 	bool ownerMayFreeData;
 
 	DataContainer() :
 			data(nullptr), length(0), ownerMayFreeData(false) {
 	}
 
-	DataContainer(char* _data, uint16_t _length, bool _ownerMayFreeData) :
+	DataContainer(char* _data, uint_fast16_t _length, bool _ownerMayFreeData) :
 			data(_data), length(_length), ownerMayFreeData(_ownerMayFreeData) {
 	}
 
