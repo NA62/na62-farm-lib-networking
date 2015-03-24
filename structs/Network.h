@@ -72,17 +72,17 @@ struct ARP_HDR {
 	struct ether_header eth;
 	struct arphdr arp;
 	char sourceHardwAddr[ETH_ALEN]; /* Sender hardware address.  */
-	uint_fast32_t sourceIPAddr; /* Sender IP address.  */
+	uint32_t sourceIPAddr; /* Sender IP address.  */
 	char targetHardwAddr[ETH_ALEN]; /* Target hardware address.  */
-	uint_fast32_t targetIPAddr; /* Target IP address.  */
+	uint32_t targetIPAddr; /* Target IP address.  */
 	// disallow padding via "__attribute__ ((__packed__))"
 }__attribute__ ((__packed__));
 
 struct EOB_FULL_FRAME {
 	struct UDP_HDR udp;
-	uint_fast32_t finishedBurstID;
-	uint_fast32_t lastEventNum :24;
-	uint_fast8_t reserved;
+	uint32_t finishedBurstID;
+	uint32_t lastEventNum :24;
+	uint8_t reserved;
 }__attribute__ ((__packed__));
 
 } /* namespace na62 */
