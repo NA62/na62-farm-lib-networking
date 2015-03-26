@@ -153,6 +153,7 @@ void L1DistributionHandler::thread() {
 	std::vector<TRIGGER_RAW_HDR*> multicastRequests;
 	multicastRequests.reserve(MAX_TRIGGERS_PER_L1MRP);
 
+	bool secondTry = false;
 	while (true) {
 		/*
 		 * pop some elements from the queue
@@ -166,6 +167,18 @@ void L1DistributionHandler::thread() {
 			}
 			multicastRequests.push_back(hdr);
 		}
+
+		// If we didn't fill up the MRP let's try again after sleeping for a short time
+		if (!secondTry && multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP) {
+			/*
+			 * sleep a bit so that next time we have more requests in one MRP
+			 */
+			boost::this_thread::sleep(
+					boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS));
+			secondTry = true;
+			continue;
+		}
+		secondTry = false;
 
 		/*
 		 * Now send all unicast requests
@@ -184,16 +197,6 @@ void L1DistributionHandler::thread() {
 //			}
 //		}
 		if (multicastRequests.size() > 0) {
-			if (multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP) {
-				/*
-				 * sleep a bit so that next time we have more requests in one MRP
-				 */
-				boost::this_thread::sleep(
-						boost::posix_time::microsec(
-								MIN_USEC_BETWEEN_L1_REQUESTS));
-				continue;
-			}
-
 			Async_SendMRP(multicastRequests);
 		} else {
 			bool didSendUnicastMRPs = false;
@@ -243,7 +246,7 @@ std::vector<TRIGGER_RAW_HDR*>& triggers) {
 	/*
 	 * Copy the dataHDR into a new buffer which will be sent afterwards
 	 */
-	char* buff = new char[sizeOfMRP];
+	char buff[sizeOfMRP];
 
 	uint numberOfTriggers = 0;
 	while (triggers.size() != 0 && numberOfTriggers != MAX_TRIGGERS_PER_L1MRP) {
@@ -289,7 +292,7 @@ std::vector<TRIGGER_RAW_HDR*>& triggers) {
 		/*
 		 * Send the frame to the L1 dispatcher via ZMQ
 		 */
-		zmq::message_t message(buff, offset,
+		zmq::message_t message(frame, offset,
 				(zmq::free_fn*) ZMQHandler::freeZmqMessage);
 		while (ZMQHandler::IsRunning()) {
 			try {
