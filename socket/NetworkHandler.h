@@ -21,6 +21,14 @@
 #include "EthernetUtils.h"
 #include <pfring.h>
 
+#define MEASURE_TIME
+
+#include <atomic>
+#ifdef MEASURE_TIME
+#include <boost/timer/timer.hpp>
+#include "../structs/Network.h"
+#endif
+
 namespace na62 {
 class NetworkHandler: public AExecutable {
 public:
@@ -83,6 +91,22 @@ public:
 	static uint getNumberOfEnqueuedSendFrames() {
 		return asyncSendData_.size();
 	}
+#ifdef MEASURE_TIME
+	static inline std::atomic<uint64_t>** GetPacketTimeDiffVsTime() {
+		return PacketTimeDiffVsTime_;
+	}
+
+	static void ResetPacketTimeDiffVsTime() {
+			for (int i = 0; i < 0x64 + 1; ++i) {
+				for (int j = 0; j < 0x64 + 1; ++j) {
+					PacketTimeDiffVsTime_[i][j] = 0;
+				}
+			}
+	}
+	static void StopPacketTimer(){
+		PacketTime_.stop();
+	}
+#endif
 
 private:
 	static std::vector<char> myMac_;
@@ -91,6 +115,9 @@ private:
 	static std::atomic<uint64_t> bytesReceived_;
 	static std::atomic<uint64_t> framesReceived_;
 	static std::atomic<uint64_t> framesSent_;
+
+	static std::atomic<uint64_t>** PacketTimeDiffVsTime_;
+
 	static uint_fast16_t numberOfQueues_;
 	static std::string deviceName_;
 
@@ -100,6 +127,14 @@ private:
 	 * The thread will send gratuitous arp requests
 	 */
 	void thread();
+
+#ifdef MEASURE_TIME
+	static boost::timer::cpu_timer PacketTime_;
+	/*
+	 * Times in microseconds
+	 */
+	static u_int32_t PreviousPacketTime_;
+#endif
 }
 ;
 
