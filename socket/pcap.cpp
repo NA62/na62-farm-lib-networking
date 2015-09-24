@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 using namespace na62;
   //Dumper = new PcapDumper Dumper;
   //PcapDumper Dumper;
-  PcapDumper::startDump();
+  PcapDumper::startDump("File.pcap");
 
   PcapDumper::dumpPacket( (char*) pkt1, sizeof(pkt1) );
   sleep(1);

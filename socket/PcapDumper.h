@@ -1,4 +1,5 @@
 #include <pcap/pcap.h>
+#include <string>
 
 namespace na62 {
 
@@ -12,9 +13,9 @@ public:
   virtual ~PcapDumper();
 
   //set the name of the file
-  static inline void startDump() {      
+  static inline void startDump(std::string filename) {
       handle_ = pcap_open_dead(DLT_EN10MB, 1 << 16);
-      dumper_ = pcap_dump_open(handle_, "cap.pcap");
+      dumper_ = pcap_dump_open(handle_, filename.c_str());
   }
 
   static inline void stopDump() {
