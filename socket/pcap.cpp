@@ -21,26 +21,21 @@ static const unsigned char pkt1[82] = {
 
 int main(int argc, char *argv[]) {
 using namespace na62;
-  //Dumper = new PcapDumper Dumper;
-  //PcapDumper Dumper;
-  PcapDumper::startDump("File.pcap");
 
-  PcapDumper::dumpPacket( (char*) pkt1, sizeof(pkt1) );
+  PcapDumper::startDump("File");
+
+  PcapDumper::dumpPacket(1, (char*) pkt1, sizeof(pkt1) );
   sleep(1);
-  PcapDumper::dumpPacket( (char*) pkt1, sizeof(pkt1) );
+  PcapDumper::dumpPacket(2, (char*) pkt1, sizeof(pkt1) );
   sleep(1);
-  PcapDumper::dumpPacket( (char*) pkt1, sizeof(pkt1) );
-  PcapDumper::dumpPacket( (char*) pkt1, sizeof(pkt1) );
-  PcapDumper::dumpPacket( (char*) pkt1, sizeof(pkt1) );
+  PcapDumper::dumpPacket(1, (char*) pkt1, sizeof(pkt1) );
+  PcapDumper::dumpPacket(1, (char*) pkt1, sizeof(pkt1) );
+  PcapDumper::dumpPacket(1, (char*) pkt1, sizeof(pkt1) );
 
-  PcapDumper::dumpPacket( (char*) pkt1, sizeof(pkt1) );
-
-
-  PcapDumper::dumpPacket( (char*) pkt1, sizeof(pkt1) );
+  PcapDumper::dumpPacket(1, (char*) pkt1, sizeof(pkt1) );
 
 
-
-
+  PcapDumper::dumpPacket(2, (char*) pkt1, sizeof(pkt1) );
 
   PcapDumper::stopDump();
 
