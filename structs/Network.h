@@ -82,7 +82,7 @@ struct EOB_FULL_FRAME {
 	struct UDP_HDR udp;
 	uint32_t finishedBurstID;
 	uint32_t lastEventNum :24;
-	uint_fast8_t reserved;
+	uint8_t reserved;
 }__attribute__ ((__packed__));
 
 } /* namespace na62 */

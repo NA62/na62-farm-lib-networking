@@ -31,16 +31,22 @@ namespace na62 {
 	std::atomic<uint64_t> NetworkHandler::framesReceived_(0);
 	std::atomic<uint64_t> NetworkHandler::framesSent_(0);
 
+#ifdef MEASURE_TIME
+	std::atomic<uint64_t>** NetworkHandler::PacketTimeDiffVsTime_;
+	boost::timer::cpu_timer NetworkHandler::PacketTime_;
+	u_int32_t NetworkHandler::PreviousPacketTime_;
+#endif
+
 	std::string NetworkHandler::deviceName_ = "";
-	tbb::concurrent_queue<DataContainer> NetworkHandler::asyncData_;
+	tbb::concurrent_bounded_queue<DataContainer> NetworkHandler::asyncSendData_;
 
 	static int socket_;
 	static struct sockaddr_ll socket_address_;
 
 	std::vector<char> NetworkHandler::myMac_;
-	uint32_t NetworkHandler::myIP_;
+	uint_fast32_t NetworkHandler::myIP_;
 
-	static u_char* recvBuffer_ = new u_char[BUF_SIZE];
+	static char* recvBuffer_ = new char[BUF_SIZE];
 
 	NetworkHandler::NetworkHandler(std::string deviceName) {
 		myIP_ = EthernetUtils::GetIPOfInterface(deviceName);
@@ -130,13 +136,14 @@ namespace na62 {
 		while (true) {
 			struct DataContainer arp = EthernetUtils::GenerateGratuitousARPv4(
 					GetMyMac().data(), GetMyIP());
+			arp.ownerMayFreeData = false;
 
 			AsyncSendFrame(std::move(arp));
 			boost::this_thread::sleep(boost::posix_time::seconds(1));
 		}
 	}
 
-	int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, const u_char** pkt,
+	int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, char** pkt,
 			u_int pkt_len, uint_fast8_t wait_for_incoming_packet, uint queueNumber) {
 		int rc = recvfrom(socket_, (void*) recvBuffer_, BUF_SIZE, 0, NULL, NULL);
 		if (rc == -1) {
@@ -169,12 +176,12 @@ namespace na62 {
 	}
 
 	void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
-		asyncData_.push(data);
+		asyncSendData_.push(std::move(data));
 	}
 
 	int NetworkHandler::DoSendQueuedFrames(uint_fast16_t threadNum) {
 		DataContainer data;
-		if (asyncData_.try_pop(data)) {
+		if (asyncSendData_.try_pop(data)) {
 			int bytes = SendFrameConcurrently(threadNum, (const u_char*) data.data,
 					data.length);
 
