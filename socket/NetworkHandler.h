@@ -14,12 +14,14 @@
 #include <atomic>
 #include <cstdbool>
 #include <cstdint>
+#include <thread>
 #include <string>
 #include <vector>
 #include <tbb/concurrent_queue.h>
 
 #include "EthernetUtils.h"
 #include <pfring.h>
+#include <pfring_zc.h>
 
 #define MEASURE_TIME
 
@@ -29,14 +31,18 @@
 #include "../structs/Network.h"
 #endif
 
+
 namespace na62 {
 class NetworkHandler: public AExecutable {
 public:
-	NetworkHandler(std::string deviceName);
+	NetworkHandler(std::string deviceName, uint numberOfThreads);
 	virtual ~NetworkHandler();
 
-	static int GetNextFrame(struct pfring_pkthdr *hdr, char** pkt,
-			u_int pkt_len, uint_fast8_t wait_for_incoming_packet, uint queueNumber);
+	bool init();
+
+	int max_packet_len(const char *device);
+
+	static uint_fast16_t GetNextFrame(u_int tid, bool activePolling, u_char*& data_return);
 
 	static std::string GetDeviceName();
 
@@ -112,13 +118,16 @@ private:
 	static std::vector<char> myMac_;
 	static uint_fast32_t myIP_;
 
+	std::thread dispatcherThread_;
+
 	static std::atomic<uint64_t> bytesReceived_;
 	static std::atomic<uint64_t> framesReceived_;
 	static std::atomic<uint64_t> framesSent_;
 
 	static std::atomic<uint64_t>** PacketTimeDiffVsTime_;
 
-	static uint_fast16_t numberOfQueues_;
+	static u_int32_t numberOfThreads_;
+
 	static std::string deviceName_;
 
 	static tbb::concurrent_bounded_queue<DataContainer> asyncSendData_;
