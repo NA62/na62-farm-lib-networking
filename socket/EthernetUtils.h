@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <cstdbool>
 #include <cstdint>
@@ -286,6 +287,12 @@ public:
 		sum = (sum >> 16) + (sum & 0xffff);
 		sum += (sum >> 16);
 		return sum == 0xFFFF;
+	}
+
+	static inline std::string ipToString(int ip){
+		char buff[16];
+		inet_ntop(AF_INET, &ip, buff, 16);
+		return buff;
 	}
 };
 
