@@ -87,12 +87,6 @@ struct DataContainer {
 		}
 		return *this;
 	}
-
-	void inline free() {
-		if (ownerMayFreeData) {
-			delete[] data;
-		}
-	}
 };
 
 class EthernetUtils {

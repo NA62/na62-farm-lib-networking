@@ -42,6 +42,9 @@ public:
 
 	int max_packet_len(const char *device);
 
+//	int32_t rr_distribution_func(pfring_zc_pkt_buff *pkt_handle,
+//			pfring_zc_queue *in_queue, void *user);
+
 	static uint_fast16_t GetNextFrame(u_int tid, bool activePolling, u_char*& data_return);
 
 	static std::string GetDeviceName();
@@ -117,8 +120,6 @@ public:
 private:
 	static std::vector<char> myMac_;
 	static uint_fast32_t myIP_;
-
-	std::thread dispatcherThread_;
 
 	static std::atomic<uint64_t> bytesReceived_;
 	static std::atomic<uint64_t> framesReceived_;

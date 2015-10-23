@@ -33,15 +33,15 @@
 
 #define MAX_CARD_SLOTS          32768
 #define PREFETCH_BUFFERS        8
-#define QUEUE_LEN               1<<16 // 32k
+#define QUEUE_LEN               1<<19 // 32k
 
 namespace na62 {
 
 //pf_ring
-static pfring_zc_cluster *zc;
+pfring_zc_cluster *zc;
 static pfring_zc_worker *zw;
 static pfring_zc_queue *inzq;
-static pfring_zc_queue **inzq_arr;
+static pfring_zc_queue *sendzq;
 static pfring_zc_queue **outzq;
 static pfring_zc_buffer_pool *wsp;
 static pfring_zc_pkt_buff **buffers;
@@ -72,7 +72,7 @@ NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads) {
 	numberOfThreads_ = numberOfThreads;
 
 	myMac_ = EthernetUtils::GetMacOfInterface(deviceName);
-	myIP_ = EthernetUtils::GetIPOfInterface(GetDeviceName());
+	myIP_ = EthernetUtils::GetIPOfInterface(deviceName);
 
 	asyncSendData_.set_capacity(1000);
 
@@ -86,44 +86,61 @@ NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads) {
 NetworkHandler::~NetworkHandler() {
 }
 
+static int rr = -1;
+
+int32_t rr_distribution_func(pfring_zc_pkt_buff *pkt_handle,
+		pfring_zc_queue *in_queue, void *user) {
+	long num_out_queues = (long) user;
+	if (++rr == num_out_queues)
+		rr = 0;
+	return rr;
+}
+
 bool NetworkHandler::init() {
 	long i;
 	int cluster_id = 1; //only 1 cluster needed
 
+	long totalNumBuffers = (2 * MAX_CARD_SLOTS) + (numberOfThreads_ * QUEUE_LEN) + numberOfThreads_ + PREFETCH_BUFFERS;
+	printf("\n\n tnb: %d\n\n packlen: %d\n\n", totalNumBuffers, max_packet_len(deviceName_.c_str()));
+
 	zc = pfring_zc_create_cluster(cluster_id,
-			max_packet_len(deviceName_.c_str()), 0,
-			MAX_CARD_SLOTS + (numberOfThreads_ * QUEUE_LEN) + numberOfThreads_
-					+ PREFETCH_BUFFERS, -1, "/hugepages/" /*NULL / auto hugetlb mountpoint */
+			9216/*max_packet_len(deviceName_.c_str())*/, 0,
+			totalNumBuffers, 1, "/hugepages/" /*NULL / auto hugetlb mountpoint */
 			);
 	if (zc == NULL) {
 		fprintf(
 		stderr,
 				"pfring_zc_create_cluster error [%s] Please check your hugetlb configuration\n",
 				strerror(errno));
-		return -1;
+		return false;
 	}
 
-	buffers = new pfring_zc_pkt_buff*[numberOfThreads_];
-	outzq = new pfring_zc_queue*[numberOfThreads_];
-	inzq_arr = new pfring_zc_queue*[1];
+	outzq = (pfring_zc_queue**) calloc(numberOfThreads_,
+			sizeof(pfring_zc_queue *));
+	buffers = (pfring_zc_pkt_buff**) calloc(numberOfThreads_,
+			sizeof(pfring_zc_pkt_buff *));
+//	buffers = new pfring_zc_pkt_buff*[numberOfThreads_];
+//	outzq = new pfring_zc_queue*[numberOfThreads_];
+	//inzq = (pfring_zc_queue**) calloc(2, sizeof(pfring_zc_queue *));
 
 	for (i = 0; i < numberOfThreads_; i++) {
 		buffers[i] = pfring_zc_get_packet_handle(zc);
 
 		if (buffers[i] == NULL) {
 			fprintf(stderr, "pfring_zc_get_packet_handle error\n");
-			return -1;
+			return false;
 		}
 	}
 
 	inzq = pfring_zc_open_device(zc, deviceName_.c_str(), rx_only, 0);
+	sendzq = pfring_zc_open_device(zc, deviceName_.c_str(), tx_only, 0);
 
-	if (inzq == NULL) {
+	if ((inzq == NULL) | (sendzq == NULL)) {
 		fprintf(
 		stderr,
 				"pfring_zc_open_device error [%s] Please check that %s is up and not already used\n",
 				strerror(errno), deviceName_.c_str());
-		return -1;
+		return false;
 	}
 
 	for (i = 0; i < numberOfThreads_; i++) {
@@ -132,7 +149,7 @@ bool NetworkHandler::init() {
 		if (outzq[i] == NULL) {
 			fprintf(stderr, "pfring_zc_create_queue error [%s]\n", strerror(
 			errno));
-			return -1;
+			return false;
 		}
 	}
 
@@ -140,30 +157,24 @@ bool NetworkHandler::init() {
 
 	if (wsp == NULL) {
 		fprintf(stderr, "pfring_zc_create_buffer_pool error\n");
-		return -1;
+		return false;
 	}
 
+	pfring_zc_distribution_func func = rr_distribution_func;
+
 	printf("Starting balancer with %d consumer threads..\n", numberOfThreads_);
+	printf("\n\nwait: %d, bind: %d, policy: %d\n\n", 1, -1,
+			round_robin_bursts_policy);
 
-	pfring_zc_distribution_func func = nullptr;
-
-	inzq_arr[0] = inzq;
-
-	dispatcherThread_ =
-			std::thread(
-					[&]() {
-						zw = pfring_zc_run_balancer(inzq_arr, outzq, 1, numberOfThreads_, wsp,
-								round_robin_bursts_policy, NULL /* idle callback */, func,
-								(void *) ((long) numberOfThreads_), 0/*waitforpacket*/,
-								-1);
-						if (zw == NULL) {
-							fprintf(stderr, "pfring_zc_run_balancer error [%s]\n", strerror(errno));
-							abort();
-							return -1;
-						}
-					});
-
-	return 1;
+	zw = pfring_zc_run_balancer(&inzq, outzq, 1, numberOfThreads_, wsp,
+			round_robin_bursts_policy,
+			NULL /* idle callback */, func, (void *) ((long) numberOfThreads_),
+			0/*waitforpacket*/, -1);
+	if (zw == NULL) {
+		fprintf(stderr, "pfring_zc_run_balancer error [%s]\n", strerror(errno));
+		abort();
+	}
+	return true;
 }
 
 int NetworkHandler::max_packet_len(const char *device) {
@@ -218,7 +229,7 @@ void NetworkHandler::thread() {
 		//        LOG_INFO << AAARP.str() << ENDL;
 
 		AsyncSendFrame(std::move(arp));
-		boost::this_thread::sleep(boost::posix_time::seconds(60));
+		boost::this_thread::sleep(boost::posix_time::seconds(1));
 	}
 }
 
@@ -264,8 +275,13 @@ int NetworkHandler::DoSendQueuedFrames(uint_fast16_t threadNum) {
 uint_fast16_t NetworkHandler::GetNextFrame(uint thread_id, bool activePolling,
 		u_char*& data_return) {
 	pfring_zc_pkt_buff *b = buffers[thread_id];
-	if (pfring_zc_recv_pkt(outzq[thread_id], &b, !activePolling) > 0) {
+	u_char* overflow = pfring_zc_pkt_buff_data(b, outzq[thread_id])+ b->len;
+
+	if (pfring_zc_recv_pkt(outzq[thread_id], &b, activePolling) > 0) {
+		memcpy(overflow, "reused", 7);
 		data_return = pfring_zc_pkt_buff_data(b, outzq[thread_id]);
+		printf("%p!!!!!!!!!!\n", data_return);
+		std::cout << std::string((char*)overflow, 7) << std::endl;
 		return b->len;
 	}
 	return 0;
@@ -277,28 +293,13 @@ std::string NetworkHandler::GetDeviceName() {
 
 int NetworkHandler::SendFrameConcurrently(uint_fast16_t threadNum,
 		const u_char* pkt, u_int pktLen, bool flush, bool activePoll) {
-//	framesSent_.fetch_add(1, std::memory_order_relaxed);
-//	/*
-//	 * Check if an Ethernet trailer is needed
-//	 */
-//	if (pktLen < 60) {
-//		/*
-//		 * TODO: using tc_malloc pkt  will already be 64 Bytes long: no need to create new one! Just check it's length...
-//		 */
-//		char* buff = new char[60];
-//		memcpy(buff, pkt, pktLen);
-//
-//		memset(buff + pktLen, 0, 60 - pktLen);
-//		pktLen = 60;
-//
-//		int rc = queueRings_[threadNum]->send_packet((char*) buff, pktLen,
-//				flush, activePoll);
-//		delete[] buff;
-//		return rc;
-//	}
-//
-//	return queueRings_[threadNum]->send_packet((char*) pkt, pktLen, flush,
-//			activePoll);
+	pfring_zc_pkt_buff *b = buffers[threadNum];
+	auto data = pfring_zc_pkt_buff_data(b, outzq[threadNum]);
+	memcpy(pfring_zc_pkt_buff_data(b, outzq[threadNum]), pkt, pktLen);
+	b->len = pktLen;
+	while (pfring_zc_send_pkt(sendzq, &b, flush) < 0) {
+		usleep(1);
+	}
 	return 0;
 }
 
