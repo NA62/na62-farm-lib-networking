@@ -121,11 +121,17 @@ public:
 		return container;
 	}
 
+	static inline uint16_t GenerateChecksum(const char* data, int len,
+			uint sum = 0) {
+		return DataContainer::GenerateChecksum(data, len, sum);
+	}
+
 	static inline uint16_t GenerateUDPChecksum(struct UDP_HDR* hdr,
 			uint32_t payloadLength) {
 		hdr->udp.check = 0;
 		return DataContainer::Wrapsum(
-				DataContainer::GenerateChecksumUnwrapped((const char *) &hdr->udp,
+				DataContainer::GenerateChecksumUnwrapped(
+						(const char *) &hdr->udp,
 						sizeof(udphdr), // The UDP header
 						DataContainer::GenerateChecksumUnwrapped(
 								(const char *) (&hdr->udp) + sizeof(udphdr),
@@ -140,7 +146,8 @@ public:
 	static inline bool CheckUDP(struct UDP_HDR* hdr, const char* udpPayload,
 			uint32_t length) {
 		return 0xFFFF
-				== DataContainer::GenerateChecksumUnwrapped((const char *) &hdr->udp,
+				== DataContainer::GenerateChecksumUnwrapped(
+						(const char *) &hdr->udp,
 						sizeof(udphdr), // The UDP header
 						DataContainer::GenerateChecksumUnwrapped(udpPayload,
 								length, // The UDP payload
