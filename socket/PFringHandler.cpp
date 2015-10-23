@@ -193,9 +193,9 @@ int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, char** pkt,
 //			LOG_INFO<< "destPort " << destPort << ENDL;
 			if (etherType == 0x0008/*ETHERTYPE_IP*/&& ipProto == IPPROTO_UDP
 					&& destPort == 58913) {
-				try {
-					l0::MEP* mep = new l0::MEP(UDPPayload, UdpDataLength,
-							(char*) *pkt);
+//				try {
+//					l0::MEP* mep = new l0::MEP(UDPPayload, UdpDataLength,
+//							(char*) *pkt);
 
 					if (PacketTime_.is_stopped()) {
 						PacketTime_.start();
@@ -208,21 +208,21 @@ int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, char** pkt,
 						if (PacketTimeDiffIndex >= 0x64)
 							PacketTimeDiffIndex = 0x64;
 //				    uint EventTimestampIndex = (uint) ((PacketTime_.elapsed().wall / 1E3)/2e5);
-						uint EventTimestampIndex = (uint) (mep->getSourceID()
-								/ 2);
-						if (EventTimestampIndex >= 0x64)
-							EventTimestampIndex = 0x64;
+//						uint EventTimestampIndex = (uint) (mep->getSourceID()
+//								/ 2);
+//						if (EventTimestampIndex >= 0x64)
+//							EventTimestampIndex = 0x64;
 //		            LOG_INFO<< "[PacketTimeDiffIndex,EventTimeStampIndex] " << PacketTimeDiffIndex << " " << EventTimestampIndex << ENDL;
-						PacketTimeDiffVsTime_[PacketTimeDiffIndex][EventTimestampIndex].fetch_add(
-								1, std::memory_order_relaxed);
-						PreviousPacketTime_ = PacketTime_.elapsed().wall / 1E3;
+//						PacketTimeDiffVsTime_[PacketTimeDiffIndex][EventTimestampIndex].fetch_add(
+//								1, std::memory_order_relaxed);
+//						PreviousPacketTime_ = PacketTime_.elapsed().wall / 1E3;
 					}
 
-				} catch (const BrokenPacketReceivedError& e) {
-					return 0;
-				} catch (const UnknownSourceIDFound& e) {
-					return 0;
-				}
+//				} catch (const BrokenPacketReceivedError& e) {
+//					return 0;
+//				} catch (const UnknownSourceIDFound& e) {
+//					return 0;
+//				}
 			}
 		}
 #endif
