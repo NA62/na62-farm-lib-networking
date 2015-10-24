@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <cstdio>
+#include <options/Logging.h>
 
 #include "NetworkHandler.h" // forward declaration
 
@@ -22,7 +23,8 @@ char* EthernetUtils::StringToMAC(const std::string address) {
 	char *macAddress = new char[6];
 
 	u_int mac_a, mac_b, mac_c, mac_d, mac_e, mac_f;
-	if (sscanf(address.data(), "%02X:%02X:%02X:%02X:%02X:%02X", &mac_a, &mac_b, &mac_c, &mac_d, &mac_e, &mac_f) != 6) {
+	if (sscanf(address.data(), "%02X:%02X:%02X:%02X:%02X:%02X", &mac_a, &mac_b,
+			&mac_c, &mac_d, &mac_e, &mac_f) != 6) {
 		printf("Invalid MAC address format (XX:XX:XX:XX:XX:XX)\n");
 		return (0);
 	} else {
@@ -33,7 +35,7 @@ char* EthernetUtils::StringToMAC(const std::string address) {
 }
 
 std::vector<char> EthernetUtils::GetMacOfInterface(std::string iface) {
-	std::vector<char>macAddress;
+	std::vector<char> macAddress;
 	macAddress.resize(6);
 
 	/*
@@ -94,7 +96,8 @@ u_int32_t EthernetUtils::GetIPOfInterface(std::string iface) {
 	return (u_int32_t) ((struct sockaddr_in *) &ifr.ifr_addr)->sin_addr.s_addr;
 }
 
-UDP_HDR* EthernetUtils::GenerateUDP(const void* buffer, const char* dMacAddr, const uint32_t dIP, const uint16_t& sPort, const uint16_t& dPort) {
+UDP_HDR* EthernetUtils::GenerateUDP(const void* buffer, const char* dMacAddr,
+		const uint32_t dIP, const uint16_t& sPort, const uint16_t& dPort) {
 	struct UDP_HDR* hdr = (struct UDP_HDR*) buffer;
 
 	hdr->eth.ether_type = htons(ETHERTYPE_IP);

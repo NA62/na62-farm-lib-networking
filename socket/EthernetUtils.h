@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <cstdbool>
 #include <cstdint>
@@ -23,71 +24,13 @@
 #include <vector>
 #include <iostream>
 
+#include <structs/DataContainer.h>
+
 #include "../structs/Network.h"
 
 namespace na62 {
 
 class NetworkHandler;
-
-struct DataContainer {
-	char * data;
-	uint_fast16_t length;
-	bool ownerMayFreeData;
-
-	DataContainer() :
-			data(nullptr), length(0), ownerMayFreeData(false) {
-	}
-
-	DataContainer(char* _data, uint_fast16_t _length, bool _ownerMayFreeData) :
-			data(_data), length(_length), ownerMayFreeData(_ownerMayFreeData) {
-	}
-
-	~DataContainer() {
-	}
-
-	/**
-	 * Copy constructor
-	 */
-	DataContainer(const DataContainer& other) :
-			data(other.data), length(std::move(other.length)), ownerMayFreeData(
-					other.ownerMayFreeData) {
-	}
-
-	/**
-	 * Copy constructor
-	 */
-	DataContainer(const DataContainer&& other) :
-			data(other.data), length(other.length), ownerMayFreeData(
-					other.ownerMayFreeData) {
-	}
-
-	/**
-	 * Move assignment operator
-	 */
-	DataContainer& operator=(DataContainer&& other) {
-		if (&other != this) {
-			data = other.data;
-			length = other.length;
-			ownerMayFreeData = other.ownerMayFreeData;
-
-			other.data = nullptr;
-			other.length = 0;
-		}
-		return *this;
-	}
-
-	/**
-	 * Move assignment operator
-	 */
-	DataContainer& operator=(DataContainer& other) {
-		if (&other != this) {
-			data = other.data;
-			length = other.length;
-			ownerMayFreeData = other.ownerMayFreeData;
-		}
-		return *this;
-	}
-};
 
 class EthernetUtils {
 public:
@@ -178,72 +121,22 @@ public:
 		return container;
 	}
 
-	static inline u_int32_t Wrapsum(u_int32_t sum) {
-		sum = ~sum & 0xFFFF;
-		return (htons(sum));
-	}
-
 	static inline uint16_t GenerateChecksum(const char* data, int len,
 			uint sum = 0) {
-		return Wrapsum(GenerateChecksumUnwrapped(data, len, sum));
-	}
-
-	static inline uint16_t GenerateChecksumUnwrapped(const char* data, int len,
-			uint64_t sum = 0) {
-		int steps = len >> 2;
-		while (steps > 0) {
-			sum += ntohl(*((uint32_t *) data));
-			data += sizeof(uint32_t);
-			--steps;
-		}
-
-		if (len % sizeof(uint32_t) != 0) {
-			uint remaining = len % sizeof(uint32_t);
-			uint32_t add = 0;
-			while (remaining-- > 0) {
-				add += *(data++); // read next byte
-				add = add << 8; // move all bytes to the left
-			}
-			sum += ntohl(add);
-		}
-
-		while (sum > 0xffffffffULL) {
-			sum = (sum & 0xffffffffULL) + (sum >> 32);
-		}
-		sum = (sum & 0xffff) + (sum >> 16);
-		sum += (sum >> 16);
-		return sum;
-
-//		int i;
-//		// Checksum all the pairs of bytes first
-//		for (i = 0; i < (len & ~1U); i += 2) {
-//			sum += (u_int16_t) ntohs(*((u_int16_t *) (data + i)));
-//			if (sum > 0xFFFF)
-//				sum -= 0xFFFF;
-//		}
-//		/*
-//		 * If there's a single byte left over, checksum it, too.
-//		 * Network byte order is big-endian, so the remaining byte is
-//		 * the high byte.
-//		 */
-//		if (i < len) {
-//			sum += data[i] << 8;
-//			if (sum > 0xFFFF)
-//				sum -= 0xFFFF;
-//		}
-//		return (sum);
+		return DataContainer::GenerateChecksum(data, len, sum);
 	}
 
 	static inline uint16_t GenerateUDPChecksum(struct UDP_HDR* hdr,
 			uint32_t payloadLength) {
 		hdr->udp.check = 0;
-		return Wrapsum(
-				GenerateChecksumUnwrapped((const char *) &hdr->udp,
+		return DataContainer::Wrapsum(
+				DataContainer::GenerateChecksumUnwrapped(
+						(const char *) &hdr->udp,
 						sizeof(udphdr), // The UDP header
-						GenerateChecksumUnwrapped(
+						DataContainer::GenerateChecksumUnwrapped(
 								(const char *) (&hdr->udp) + sizeof(udphdr),
 								payloadLength, // The UDP payload
-								GenerateChecksumUnwrapped(
+								DataContainer::GenerateChecksumUnwrapped(
 										(const char *) &hdr->ip.saddr, 8,
 										IPPROTO_UDP
 												+ (u_int32_t) ntohs(
@@ -253,11 +146,12 @@ public:
 	static inline bool CheckUDP(struct UDP_HDR* hdr, const char* udpPayload,
 			uint32_t length) {
 		return 0xFFFF
-				== GenerateChecksumUnwrapped((const char *) &hdr->udp,
+				== DataContainer::GenerateChecksumUnwrapped(
+						(const char *) &hdr->udp,
 						sizeof(udphdr), // The UDP header
-						GenerateChecksumUnwrapped(udpPayload,
+						DataContainer::GenerateChecksumUnwrapped(udpPayload,
 								length, // The UDP payload
-								GenerateChecksumUnwrapped(
+								DataContainer::GenerateChecksumUnwrapped(
 										(const char *) &hdr->ip.saddr,
 										8/*source and dest. address: 4 byte each*/,
 										IPPROTO_UDP
@@ -280,6 +174,12 @@ public:
 		sum = (sum >> 16) + (sum & 0xffff);
 		sum += (sum >> 16);
 		return sum == 0xFFFF;
+	}
+
+	static inline std::string ipToString(int ip) {
+		char buff[16];
+		inet_ntop(AF_INET, &ip, buff, 16);
+		return buff;
 	}
 };
 
