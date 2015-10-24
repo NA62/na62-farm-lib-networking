@@ -105,7 +105,7 @@ bool NetworkHandler::init(void (*idelCallback)()) {
 	long totalNumBuffers = (1 * MAX_CARD_SLOTS) + 1.5 * TOTAL_QUEUE_LEN
 			+ PREFETCH_BUFFERS;
 
-	printf("Allocating %ul buffers (%f GB) for %i worker threads\n",
+	printf("Allocating %il buffers (%f GB) for %i worker threads\n",
 			totalNumBuffers,
 			totalNumBuffers * max_packet_len(deviceName_.c_str()) * 9E-9,
 			numberOfThreads_);
@@ -208,7 +208,6 @@ void NetworkHandler::thread() {
 	struct DataContainer arp = EthernetUtils::GenerateGratuitousARPv4(
 			GetMyMac().data(), GetMyIP());
 
-
 #ifdef MEASURE_TIME
 	PacketTimeDiffVsTime_ = new std::atomic<uint64_t>*[0x64 + 1];
 	for (int i = 0; i < 0x64 + 1; i++) {
@@ -272,13 +271,12 @@ int NetworkHandler::DoSendQueuedFrames(uint_fast16_t threadNum) {
 uint_fast16_t NetworkHandler::GetNextFrame(uint thread_id, bool activePolling,
 		u_char*& data_return) {
 	pfring_zc_pkt_buff *b = buffers[thread_id];
-	u_char* overflow = pfring_zc_pkt_buff_data(b, outzq[thread_id]) + b->len;
 
-	if (pfring_zc_recv_pkt(outzq[thread_id], &b, activePolling) > 0) {
-		memcpy(overflow, "reused", 7);
+	if (pfring_zc_recv_pkt(outzq[thread_id], &b, !activePolling) > 0) {
 		data_return = pfring_zc_pkt_buff_data(b, outzq[thread_id]);
-		printf("%p!!!!!!!!!!\n", data_return);
-		std::cout << std::string((char*) overflow, 7) << std::endl;
+
+		framesReceived_++;
+		bytesReceived_ += b->len;
 		return b->len;
 	}
 	return 0;
@@ -290,13 +288,14 @@ std::string NetworkHandler::GetDeviceName() {
 
 int NetworkHandler::SendFrameZC(uint_fast16_t threadNum, const u_char* pkt,
 		u_int pktLen, bool flush, bool activePoll) {
-	pfring_zc_pkt_buff *b = buffers[threadNum];
-	auto data = pfring_zc_pkt_buff_data(b, outzq[threadNum]);
-	memcpy(pfring_zc_pkt_buff_data(b, outzq[threadNum]), pkt, pktLen);
-	b->len = pktLen;
-	while (pfring_zc_send_pkt(sendzq, &b, flush) < 0) {
-		usleep(1);
-	}
+//	pfring_zc_pkt_buff *b = buffers[threadNum];
+//	auto data = pfring_zc_pkt_buff_data(b, outzq[threadNum]);
+//	memcpy(pfring_zc_pkt_buff_data(b, outzq[threadNum]), pkt, pktLen);
+//	b->len = pktLen;
+//	while (pfring_zc_send_pkt(sendzq, &b, flush) < 0) {
+//		usleep(1);
+//	}
+//	framesSent_++;
 	return 0;
 }
 
