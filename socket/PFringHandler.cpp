@@ -33,7 +33,7 @@
 
 #define MAX_CARD_SLOTS          32768
 #define PREFETCH_BUFFERS        8
-#define QUEUE_LEN               1<<19 // 32k
+#define QUEUE_LEN               8192 // 32k
 
 namespace na62 {
 
@@ -103,11 +103,11 @@ bool NetworkHandler::init(void (*idelCallback)()) {
 
 	long totalNumBuffers = (2 * MAX_CARD_SLOTS) + (numberOfThreads_ * QUEUE_LEN)
 			+ numberOfThreads_ + PREFETCH_BUFFERS;
-	printf("\n\n tnb: %d\n\n packlen: %d\n\n", totalNumBuffers,
+	printf("\n\n tnb: %ul\n\n packlen: %d\n\n", totalNumBuffers,
 			max_packet_len(deviceName_.c_str()));
 
 	zc = pfring_zc_create_cluster(cluster_id,
-			9216/*max_packet_len(deviceName_.c_str())*/, 0, totalNumBuffers, 1,
+			max_packet_len(deviceName_.c_str()), 0, totalNumBuffers, 1,
 			"/hugepages/" /*NULL / auto hugetlb mountpoint */
 			);
 	if (zc == NULL) {
@@ -202,7 +202,7 @@ void NetworkHandler::thread() {
 	 */
 	struct DataContainer arp = EthernetUtils::GenerateGratuitousARPv4(
 			GetMyMac().data(), GetMyIP());
-	arp.ownerMayFreeData = false;
+
 
 #ifdef MEASURE_TIME
 	PacketTimeDiffVsTime_ = new std::atomic<uint64_t>*[0x64 + 1];
@@ -258,10 +258,6 @@ int NetworkHandler::DoSendQueuedFrames(uint_fast16_t threadNum) {
 	if (asyncSendData_.try_pop(data)) {
 		int bytes = SendFrameZC(threadNum, (const u_char*) data.data,
 				data.length);
-
-		if (data.ownerMayFreeData) {
-			delete[] data.data;
-		}
 
 		return bytes;
 	}

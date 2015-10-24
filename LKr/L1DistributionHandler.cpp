@@ -263,7 +263,7 @@ std::vector<TRIGGER_RAW_HDR*>& triggers) {
 		dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
 				&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
-		NetworkHandler::AsyncSendFrame( { frame, offset, true });
+		NetworkHandler::AsyncSendFrame( { frame, offset });
 	}
 	delete[] buff;
 
