@@ -275,10 +275,17 @@ int NetworkHandler::DoSendQueuedFrames(uint_fast16_t threadNum) {
 uint_fast16_t NetworkHandler::GetNextFrame(uint thread_id, bool activePolling,
 		u_char*& data_return) {
 	pfring_zc_pkt_buff *b = buffers[thread_id];
-	u_char* overflow = pfring_zc_pkt_buff_data(b, outzq[thread_id]) + b->len;
 
 	if (pfring_zc_recv_pkt(outzq[thread_id], &b, activePolling) > 0) {
 		data_return = pfring_zc_pkt_buff_data(b, outzq[thread_id]);
+
+		u_char* overflow = data_return + 8000;
+		char* msg = "reusing";
+		if (strncmp(reinterpret_cast<char*>(overflow), msg, strlen(msg)) == 0) {
+			std::cerr << "Reusing!!!" << b->len << std::endl;
+		}
+
+		memcpy(overflow, msg, strlen(msg));
 		return b->len;
 	}
 	return 0;
