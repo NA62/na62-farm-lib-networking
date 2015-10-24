@@ -33,7 +33,7 @@
 
 #define MAX_CARD_SLOTS          32768
 #define PREFETCH_BUFFERS        8
-#define QUEUE_LEN               8192 // 32k
+#define TOTAL_QUEUE_LEN         2E6
 
 namespace na62 {
 
@@ -101,10 +101,14 @@ bool NetworkHandler::init(void (*idelCallback)()) {
 	long i;
 	int cluster_id = 1; //only 1 cluster needed
 
-	long totalNumBuffers = (2 * MAX_CARD_SLOTS) + (numberOfThreads_ * QUEUE_LEN)
-			+ numberOfThreads_ + PREFETCH_BUFFERS;
-	printf("\n\n tnb: %ul\n\n packlen: %d\n\n", totalNumBuffers,
-			max_packet_len(deviceName_.c_str()));
+	// TODO: understand how to properly compute the number of buffers (1.5 is just a random try)
+	long totalNumBuffers = (2 * MAX_CARD_SLOTS) + 1.5 * TOTAL_QUEUE_LEN
+			+ PREFETCH_BUFFERS;
+
+	printf("Allocating %ul buffers (%f GB) for %i worker threads\n",
+			totalNumBuffers,
+			totalNumBuffers * max_packet_len(deviceName_.c_str()) * 9E-9,
+			numberOfThreads_);
 
 	zc = pfring_zc_create_cluster(cluster_id,
 			max_packet_len(deviceName_.c_str()), 0, totalNumBuffers, 1,
@@ -147,7 +151,8 @@ bool NetworkHandler::init(void (*idelCallback)()) {
 	}
 
 	for (i = 0; i < numberOfThreads_; i++) {
-		outzq[i] = pfring_zc_create_queue(zc, QUEUE_LEN);
+		outzq[i] = pfring_zc_create_queue(zc,
+		TOTAL_QUEUE_LEN / numberOfThreads_);
 
 		if (outzq[i] == NULL) {
 			fprintf(stderr, "pfring_zc_create_queue error [%s]\n", strerror(
@@ -170,7 +175,7 @@ bool NetworkHandler::init(void (*idelCallback)()) {
 			round_robin_bursts_policy);
 
 	zw = pfring_zc_run_balancer(&inzq, outzq, 1, numberOfThreads_, wsp,
-			round_robin_bursts_policy, idelCallback /* idle callback */, func,
+			round_robin_bursts_policy, NULL /* idle callback */, func,
 			(void *) ((long) numberOfThreads_), 0/*waitforpacket*/, -1);
 	if (zw == NULL) {
 		fprintf(stderr, "pfring_zc_run_balancer error [%s]\n", strerror(errno));
