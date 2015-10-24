@@ -35,10 +35,10 @@
 namespace na62 {
 class NetworkHandler: public AExecutable {
 public:
-	NetworkHandler(std::string deviceName, uint numberOfThreads);
+	NetworkHandler(std::string deviceName, uint numberOfThreads, void (*idelCallback)());
 	virtual ~NetworkHandler();
 
-	bool init();
+	bool init(void (*idelCallback)());
 
 	int max_packet_len(const char *device);
 
@@ -62,7 +62,7 @@ public:
 	 */
 	static int DoSendQueuedFrames(uint_fast16_t threadNum);
 
-	static int SendFrameConcurrently(uint_fast16_t threadNum, const u_char *pkt,
+	static int SendFrameZC(uint_fast16_t threadNum, const u_char *pkt,
 			u_int pktLen, bool flush = true, bool activePoll = true);
 
 	static void PrintStats();
