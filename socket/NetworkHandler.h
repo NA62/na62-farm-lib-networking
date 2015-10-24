@@ -31,21 +31,22 @@
 #include "../structs/Network.h"
 #endif
 
-
 namespace na62 {
 class NetworkHandler: public AExecutable {
 public:
-	NetworkHandler(std::string deviceName, uint numberOfThreads, void (*idelCallback)());
+	NetworkHandler(std::string deviceName, uint numberOfThreads,
+			uint numberOfBuffers, void (*idelCallback)());
 	virtual ~NetworkHandler();
 
-	bool init(void (*idelCallback)());
+	bool init(const uint numberOfBuffers, void (*idelCallback)());
 
 	int max_packet_len(const char *device);
 
 //	int32_t rr_distribution_func(pfring_zc_pkt_buff *pkt_handle,
 //			pfring_zc_queue *in_queue, void *user);
 
-	static uint_fast16_t GetNextFrame(u_int tid, bool activePolling, u_char*& data_return);
+	static uint_fast16_t GetNextFrame(u_int tid, bool activePolling,
+			u_char*& data_return);
 
 	static std::string GetDeviceName();
 
@@ -106,13 +107,13 @@ public:
 	}
 
 	static void ResetPacketTimeDiffVsTime() {
-			for (int i = 0; i < 0x64 + 1; ++i) {
-				for (int j = 0; j < 0x64 + 1; ++j) {
-					PacketTimeDiffVsTime_[i][j] = 0;
-				}
+		for (int i = 0; i < 0x64 + 1; ++i) {
+			for (int j = 0; j < 0x64 + 1; ++j) {
+				PacketTimeDiffVsTime_[i][j] = 0;
 			}
+		}
 	}
-	static void StopPacketTimer(){
+	static void StopPacketTimer() {
 		PacketTime_.stop();
 	}
 #endif

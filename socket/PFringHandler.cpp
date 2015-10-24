@@ -33,7 +33,6 @@
 
 #define MAX_CARD_SLOTS          32768
 #define PREFETCH_BUFFERS        8
-#define TOTAL_QUEUE_LEN         2E6
 
 namespace na62 {
 
@@ -67,7 +66,7 @@ tbb::concurrent_bounded_queue<DataContainer> NetworkHandler::asyncSendData_;
 std::vector<char> NetworkHandler::myMac_;
 uint_fast32_t NetworkHandler::myIP_;
 
-NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads,
+NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads, uint numberOfBuffers,
 		void (*idelCallback)()) {
 	deviceName_ = deviceName;
 	numberOfThreads_ = numberOfThreads;
@@ -77,7 +76,7 @@ NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads,
 
 	asyncSendData_.set_capacity(1000);
 
-	if (!init(idelCallback)) {
+	if (!init(numberOfBuffers, idelCallback)) {
 		LOG_ERROR<< "Unable to load pf_ring ZC" << ENDL;
 		abort();
 	}
@@ -97,12 +96,12 @@ int32_t rr_distribution_func(pfring_zc_pkt_buff *pkt_handle,
 	return rr;
 }
 
-bool NetworkHandler::init(void (*idelCallback)()) {
+bool NetworkHandler::init(const uint numberOfBuffers, void (*idelCallback)()) {
 	long i;
 	int cluster_id = 1; //only 1 cluster needed
 
 	// TODO: understand how to properly compute the number of buffers (1.5 is just a random try)
-	long totalNumBuffers = (1 * MAX_CARD_SLOTS) + 1.5 * TOTAL_QUEUE_LEN
+	long totalNumBuffers = (1 * MAX_CARD_SLOTS) + 1.5 * numberOfBuffers
 			+ PREFETCH_BUFFERS;
 
 	printf("Allocating %il buffers (%f GB) for %i worker threads\n",
@@ -152,7 +151,7 @@ bool NetworkHandler::init(void (*idelCallback)()) {
 
 	for (i = 0; i < numberOfThreads_; i++) {
 		outzq[i] = pfring_zc_create_queue(zc,
-		TOTAL_QUEUE_LEN / numberOfThreads_);
+				numberOfBuffers / numberOfThreads_);
 
 		if (outzq[i] == NULL) {
 			fprintf(stderr, "pfring_zc_create_queue error [%s]\n", strerror(
@@ -277,6 +276,7 @@ uint_fast16_t NetworkHandler::GetNextFrame(uint thread_id, bool activePolling,
 
 		framesReceived_++;
 		bytesReceived_ += b->len;
+
 		return b->len;
 	}
 	return 0;
@@ -288,14 +288,14 @@ std::string NetworkHandler::GetDeviceName() {
 
 int NetworkHandler::SendFrameZC(uint_fast16_t threadNum, const u_char* pkt,
 		u_int pktLen, bool flush, bool activePoll) {
-//	pfring_zc_pkt_buff *b = buffers[threadNum];
-//	auto data = pfring_zc_pkt_buff_data(b, outzq[threadNum]);
-//	memcpy(pfring_zc_pkt_buff_data(b, outzq[threadNum]), pkt, pktLen);
-//	b->len = pktLen;
-//	while (pfring_zc_send_pkt(sendzq, &b, flush) < 0) {
-//		usleep(1);
-//	}
-//	framesSent_++;
+	pfring_zc_pkt_buff *b = buffers[threadNum];
+	auto data = pfring_zc_pkt_buff_data(b, outzq[threadNum]);
+	memcpy(pfring_zc_pkt_buff_data(b, outzq[threadNum]), pkt, pktLen);
+	b->len = pktLen;
+	while (pfring_zc_send_pkt(sendzq, &b, flush) < 0) {
+		usleep(1);
+	}
+	framesSent_++;
 	return 0;
 }
 
