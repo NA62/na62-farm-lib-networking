@@ -102,7 +102,7 @@ bool NetworkHandler::init(void (*idelCallback)()) {
 	int cluster_id = 1; //only 1 cluster needed
 
 	// TODO: understand how to properly compute the number of buffers (1.5 is just a random try)
-	long totalNumBuffers = (2 * MAX_CARD_SLOTS) + 1.5 * TOTAL_QUEUE_LEN
+	long totalNumBuffers = (1 * MAX_CARD_SLOTS) + 1.5 * TOTAL_QUEUE_LEN
 			+ PREFETCH_BUFFERS;
 
 	printf("Allocating %ul buffers (%f GB) for %i worker threads\n",
@@ -189,7 +189,7 @@ int NetworkHandler::max_packet_len(const char *device) {
 	pfring_card_settings settings;
 
 	ring = pfring_open(device, 1536,
-			PF_RING_PROMISC | PF_RING_ZC_NOT_REPROGRAM_RSS);
+	PF_RING_PROMISC | PF_RING_ZC_NOT_REPROGRAM_RSS);
 
 	if (ring == NULL)
 		return 1536;
