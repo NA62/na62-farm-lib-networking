@@ -27,13 +27,14 @@
 #include "NetworkHandler.h"
 #include "PFring.h"
 #include <pfring.h>
+#include <options/Options.h>
 
 #include <l0/MEP.h>
 #include <l0/MEPFragment.h>
 
 #define MAX_CARD_SLOTS          32768
 #define PREFETCH_BUFFERS        8
-#define QUEUE_LEN               1<<19 // 32k
+#define TOTAL_QUEUE_LEN         2E6
 
 namespace na62 {
 
@@ -100,12 +101,18 @@ bool NetworkHandler::init() {
 	long i;
 	int cluster_id = 1; //only 1 cluster needed
 
-	long totalNumBuffers = (2 * MAX_CARD_SLOTS) + (numberOfThreads_ * QUEUE_LEN) + numberOfThreads_ + PREFETCH_BUFFERS;
-	printf("\n\n tnb: %d\n\n packlen: %d\n\n", totalNumBuffers, max_packet_len(deviceName_.c_str()));
+	// TODO: understand how to properly compute the number of buffers (1.5 is just a random try)
+	long totalNumBuffers = (1 * MAX_CARD_SLOTS) + 1.5 * TOTAL_QUEUE_LEN
+			+ PREFETCH_BUFFERS;
+
+	printf("Allocating %ul buffers (%f GB) for %i worker threads\n",
+			totalNumBuffers,
+			totalNumBuffers * max_packet_len(deviceName_.c_str()) * 9E-9,
+			numberOfThreads_);
 
 	zc = pfring_zc_create_cluster(cluster_id,
-			9216/*max_packet_len(deviceName_.c_str())*/, 0,
-			totalNumBuffers, 1, "/hugepages/" /*NULL / auto hugetlb mountpoint */
+			max_packet_len(deviceName_.c_str()), 0, totalNumBuffers, 1,
+			"/hugepages/" /*NULL / auto hugetlb mountpoint */
 			);
 	if (zc == NULL) {
 		fprintf(
@@ -144,7 +151,8 @@ bool NetworkHandler::init() {
 	}
 
 	for (i = 0; i < numberOfThreads_; i++) {
-		outzq[i] = pfring_zc_create_queue(zc, QUEUE_LEN);
+		outzq[i] = pfring_zc_create_queue(zc,
+		TOTAL_QUEUE_LEN / numberOfThreads_);
 
 		if (outzq[i] == NULL) {
 			fprintf(stderr, "pfring_zc_create_queue error [%s]\n", strerror(
@@ -163,8 +171,6 @@ bool NetworkHandler::init() {
 	pfring_zc_distribution_func func = rr_distribution_func;
 
 	printf("Starting balancer with %d consumer threads..\n", numberOfThreads_);
-	printf("\n\nwait: %d, bind: %d, policy: %d\n\n", 1, -1,
-			round_robin_bursts_policy);
 
 	zw = pfring_zc_run_balancer(&inzq, outzq, 1, numberOfThreads_, wsp,
 			round_robin_bursts_policy,
@@ -178,26 +184,20 @@ bool NetworkHandler::init() {
 }
 
 int NetworkHandler::max_packet_len(const char *device) {
-	int max_len;
 	pfring *ring;
+	pfring_card_settings settings;
 
-	ring = pfring_open(device, 1536, PF_RING_PROMISC);
+	ring = pfring_open(device, 1536,
+	PF_RING_PROMISC | PF_RING_ZC_NOT_REPROGRAM_RSS);
 
 	if (ring == NULL)
 		return 1536;
 
-	if (ring->dna.dna_mapped_device) {
-		max_len = ring->dna.dna_dev.mem_info.rx.packet_memory_slot_len;
-	} else {
-		max_len = pfring_get_mtu_size(ring);
-		if (max_len == 0)
-			max_len = 9000 /* Jumbo */;
-		max_len += 14 /* Eth */+ 4 /* VLAN */;
-	}
+	pfring_get_card_settings(ring, &settings);
 
 	pfring_close(ring);
 
-	return max_len;
+	return settings.max_packet_size;
 }
 
 void NetworkHandler::thread() {
@@ -260,7 +260,7 @@ void NetworkHandler::AsyncSendFrame(const DataContainer&& data) {
 int NetworkHandler::DoSendQueuedFrames(uint_fast16_t threadNum) {
 	DataContainer data;
 	if (asyncSendData_.try_pop(data)) {
-		int bytes = SendFrameConcurrently(threadNum, (const u_char*) data.data,
+		int bytes = SendFrameZC(threadNum, (const u_char*) data.data,
 				data.length);
 
 		if (data.ownerMayFreeData) {
@@ -275,13 +275,10 @@ int NetworkHandler::DoSendQueuedFrames(uint_fast16_t threadNum) {
 uint_fast16_t NetworkHandler::GetNextFrame(uint thread_id, bool activePolling,
 		u_char*& data_return) {
 	pfring_zc_pkt_buff *b = buffers[thread_id];
-	u_char* overflow = pfring_zc_pkt_buff_data(b, outzq[thread_id])+ b->len;
+	u_char* overflow = pfring_zc_pkt_buff_data(b, outzq[thread_id]) + b->len;
 
 	if (pfring_zc_recv_pkt(outzq[thread_id], &b, activePolling) > 0) {
-		memcpy(overflow, "reused", 7);
 		data_return = pfring_zc_pkt_buff_data(b, outzq[thread_id]);
-		printf("%p!!!!!!!!!!\n", data_return);
-		std::cout << std::string((char*)overflow, 7) << std::endl;
 		return b->len;
 	}
 	return 0;
@@ -291,8 +288,8 @@ std::string NetworkHandler::GetDeviceName() {
 	return deviceName_;
 }
 
-int NetworkHandler::SendFrameConcurrently(uint_fast16_t threadNum,
-		const u_char* pkt, u_int pktLen, bool flush, bool activePoll) {
+int NetworkHandler::SendFrameZC(uint_fast16_t threadNum, const u_char* pkt,
+		u_int pktLen, bool flush, bool activePoll) {
 	pfring_zc_pkt_buff *b = buffers[threadNum];
 	auto data = pfring_zc_pkt_buff_data(b, outzq[threadNum]);
 	memcpy(pfring_zc_pkt_buff_data(b, outzq[threadNum]), pkt, pktLen);

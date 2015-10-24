@@ -62,7 +62,7 @@ public:
 	 */
 	static int DoSendQueuedFrames(uint_fast16_t threadNum);
 
-	static int SendFrameConcurrently(uint_fast16_t threadNum, const u_char *pkt,
+	static int SendFrameZC(uint_fast16_t threadNum, const u_char *pkt,
 			u_int pktLen, bool flush = true, bool activePoll = true);
 
 	static void PrintStats();
