@@ -44,13 +44,14 @@ static pfring_zc_queue *sendzq;
 static pfring_zc_queue **outzq;
 static pfring_zc_buffer_pool *wsp;
 static pfring_zc_pkt_buff **buffers;
-
+static pfring_zc_stat **stats;
 /*
  * TODO: use one variable per queue instead of an atomic and sum up in the monitor connector
  */
 std::atomic<uint64_t> NetworkHandler::bytesReceived_(0);
 std::atomic<uint64_t> NetworkHandler::framesReceived_(0);
 std::atomic<uint64_t> NetworkHandler::framesSent_(0);
+unsigned long long drops;
 
 #ifdef MEASURE_TIME
 std::atomic<uint64_t>** NetworkHandler::PacketTimeDiffVsTime_;
@@ -66,8 +67,8 @@ tbb::concurrent_bounded_queue<DataContainer> NetworkHandler::asyncSendData_;
 std::vector<char> NetworkHandler::myMac_;
 uint_fast32_t NetworkHandler::myIP_;
 
-NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads, uint numberOfBuffers,
-		void (*idleCallback)()) {
+NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads,
+		uint numberOfBuffers, void (*idleCallback)()) {
 	deviceName_ = deviceName;
 	numberOfThreads_ = numberOfThreads;
 
@@ -101,8 +102,8 @@ bool NetworkHandler::init(const uint numberOfBuffers, void (*idleCallback)()) {
 	int cluster_id = 1; //only 1 cluster needed
 
 	// TODO: understand how to properly compute the number of buffers (1.5 is just a random try)
-	long totalNumBuffers = (1 * MAX_CARD_SLOTS) + 1.5 * numberOfBuffers
-			+ PREFETCH_BUFFERS;
+	long totalNumBuffers = (1 * MAX_CARD_SLOTS)
+			+ 1.5 * numberOfBuffers+ PREFETCH_BUFFERS;
 
 	printf("Allocating %il buffers (%f GB) for %i worker threads\n",
 			totalNumBuffers,
@@ -125,6 +126,8 @@ bool NetworkHandler::init(const uint numberOfBuffers, void (*idleCallback)()) {
 			sizeof(pfring_zc_queue *));
 	buffers = (pfring_zc_pkt_buff**) calloc(numberOfThreads_,
 			sizeof(pfring_zc_pkt_buff *));
+	stats = (pfring_zc_stat**) calloc(numberOfThreads_,
+			sizeof(pfring_zc_stat *));
 //	buffers = new pfring_zc_pkt_buff*[numberOfThreads_];
 //	outzq = new pfring_zc_queue*[numberOfThreads_];
 	//inzq = (pfring_zc_queue**) calloc(2, sizeof(pfring_zc_queue *));
@@ -152,7 +155,7 @@ bool NetworkHandler::init(const uint numberOfBuffers, void (*idleCallback)()) {
 	for (i = 0; i < numberOfThreads_; i++) {
 		outzq[i] = pfring_zc_create_queue(zc,
 				numberOfBuffers / numberOfThreads_);
-
+		stats[i] = pfring_zc_stat();
 		if (outzq[i] == NULL) {
 			fprintf(stderr, "pfring_zc_create_queue error [%s]\n", strerror(
 			errno));
@@ -233,22 +236,26 @@ void NetworkHandler::thread() {
 }
 
 void NetworkHandler::PrintStats() {
-	pfring_stat stats = { 0 };
-	LOG_INFO<< "Ring\trecv\tdrop\t%drop" << ENDL;
-//	for (uint i = 0; i < numberOfQueues_; i++) {
-//		queueRings_[i]->get_stats(&stats);
-//		LOG_INFO << i << " \t" << stats.recv << "\t" << stats.drop << "\t"
-//				<< 100. * stats.drop / (stats.recv + 1.) << ENDL;
-//	}
+	LOG_INFO<< "Queue\trecv\tdrop\t%drop" << ENDL;
+	for (uint i = 0; i < numberOfThreads_; i++) {
+		if (pfring_zc_stats(outzq[i], &&stats[i]) == 0) {
+			LOG_INFO << i << " \t" << stats[i]->recv << "\t" << stats[i]->drop << "\t"
+			<< 100. * stats[i]->drop / (stats[i]->recv + 1.) << ENDL;
+		} else {
+			LOG_ERROR << "Could not read stats from queue " << i  << ENDL;
+		}
+	}
 }
 
 uint64_t NetworkHandler::GetFramesDropped() {
 	uint64_t dropped = 0;
-	pfring_stat stats = { 0 };
-//	for (uint i = 0; i < numberOfQueues_; i++) {
-//		queueRings_[i]->get_stats(&stats);
-//		dropped += stats.drop;
-//	}
+	for (uint i = 0; i < numberOfThreads_; i++) {
+		if (pfring_zc_stats(outzq[i], &&stats[i]) == 0) {
+			dropped += stats[i]->drop;
+		} else {
+			LOG_ERROR << "Could not read drops from queue " << i  << ENDL;
+		}
+	}
 	return dropped;
 }
 
