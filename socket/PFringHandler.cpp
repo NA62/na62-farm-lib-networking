@@ -33,7 +33,6 @@
 
 #define MAX_CARD_SLOTS          32768
 #define PREFETCH_BUFFERS        8
-#define TOTAL_QUEUE_LEN         2E6
 
 namespace na62 {
 
@@ -67,7 +66,7 @@ tbb::concurrent_bounded_queue<DataContainer> NetworkHandler::asyncSendData_;
 std::vector<char> NetworkHandler::myMac_;
 uint_fast32_t NetworkHandler::myIP_;
 
-NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads,
+NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads, uint numberOfBuffers,
 		void (*idleCallback)()) {
 	deviceName_ = deviceName;
 	numberOfThreads_ = numberOfThreads;
@@ -77,7 +76,7 @@ NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads,
 
 	asyncSendData_.set_capacity(1000);
 
-	if (!init(idleCallback)) {
+	if (!init(numberOfBuffers, idleCallback)) {
 		LOG_ERROR<< "Unable to load pf_ring ZC" << ENDL;
 		abort();
 	}
@@ -97,15 +96,15 @@ int32_t rr_distribution_func(pfring_zc_pkt_buff *pkt_handle,
 	return rr;
 }
 
-bool NetworkHandler::init(void (*idleCallback)()) {
+bool NetworkHandler::init(const uint numberOfBuffers, void (*idleCallback)()) {
 	long i;
 	int cluster_id = 1; //only 1 cluster needed
 
 	// TODO: understand how to properly compute the number of buffers (1.5 is just a random try)
-	long totalNumBuffers = (1 * MAX_CARD_SLOTS) + 1.5 * TOTAL_QUEUE_LEN
+	long totalNumBuffers = (1 * MAX_CARD_SLOTS) + 1.5 * numberOfBuffers
 			+ PREFETCH_BUFFERS;
 
-	printf("Allocating %ul buffers (%f GB) for %i worker threads\n",
+	printf("Allocating %il buffers (%f GB) for %i worker threads\n",
 			totalNumBuffers,
 			totalNumBuffers * max_packet_len(deviceName_.c_str()) * 9E-9,
 			numberOfThreads_);
@@ -152,7 +151,7 @@ bool NetworkHandler::init(void (*idleCallback)()) {
 
 	for (i = 0; i < numberOfThreads_; i++) {
 		outzq[i] = pfring_zc_create_queue(zc,
-		TOTAL_QUEUE_LEN / numberOfThreads_);
+				numberOfBuffers / numberOfThreads_);
 
 		if (outzq[i] == NULL) {
 			fprintf(stderr, "pfring_zc_create_queue error [%s]\n", strerror(
@@ -207,7 +206,6 @@ void NetworkHandler::thread() {
 	 */
 	struct DataContainer arp = EthernetUtils::GenerateGratuitousARPv4(
 			GetMyMac().data(), GetMyIP());
-
 
 #ifdef MEASURE_TIME
 	PacketTimeDiffVsTime_ = new std::atomic<uint64_t>*[0x64 + 1];
@@ -272,13 +270,13 @@ int NetworkHandler::DoSendQueuedFrames(uint_fast16_t threadNum) {
 uint_fast16_t NetworkHandler::GetNextFrame(uint thread_id, bool activePolling,
 		u_char*& data_return) {
 	pfring_zc_pkt_buff *b = buffers[thread_id];
-	u_char* overflow = pfring_zc_pkt_buff_data(b, outzq[thread_id]) + b->len;
 
-	if (pfring_zc_recv_pkt(outzq[thread_id], &b, activePolling) > 0) {
-		memcpy(overflow, "reused", 7);
+	if (pfring_zc_recv_pkt(outzq[thread_id], &b, !activePolling) > 0) {
 		data_return = pfring_zc_pkt_buff_data(b, outzq[thread_id]);
-		printf("%p!!!!!!!!!!\n", data_return);
-		std::cout << std::string((char*) overflow, 7) << std::endl;
+
+		framesReceived_++;
+		bytesReceived_ += b->len;
+
 		return b->len;
 	}
 	return 0;
@@ -297,6 +295,7 @@ int NetworkHandler::SendFrameZC(uint_fast16_t threadNum, const u_char* pkt,
 	while (pfring_zc_send_pkt(sendzq, &b, flush) < 0) {
 		usleep(1);
 	}
+	framesSent_++;
 	return 0;
 }
 
