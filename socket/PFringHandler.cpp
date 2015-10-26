@@ -68,7 +68,7 @@ std::vector<char> NetworkHandler::myMac_;
 uint_fast32_t NetworkHandler::myIP_;
 
 NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads,
-		void (*idelCallback)()) {
+		void (*idleCallback)()) {
 	deviceName_ = deviceName;
 	numberOfThreads_ = numberOfThreads;
 
@@ -77,7 +77,7 @@ NetworkHandler::NetworkHandler(std::string deviceName, uint numberOfThreads,
 
 	asyncSendData_.set_capacity(1000);
 
-	if (!init(idelCallback)) {
+	if (!init(idleCallback)) {
 		LOG_ERROR<< "Unable to load pf_ring ZC" << ENDL;
 		abort();
 	}
@@ -97,7 +97,7 @@ int32_t rr_distribution_func(pfring_zc_pkt_buff *pkt_handle,
 	return rr;
 }
 
-bool NetworkHandler::init(void (*idelCallback)()) {
+bool NetworkHandler::init(void (*idleCallback)()) {
 	long i;
 	int cluster_id = 1; //only 1 cluster needed
 
@@ -292,7 +292,7 @@ int NetworkHandler::SendFrameZC(uint_fast16_t threadNum, const u_char* pkt,
 		u_int pktLen, bool flush, bool activePoll) {
 	pfring_zc_pkt_buff *b = buffers[threadNum];
 	auto data = pfring_zc_pkt_buff_data(b, outzq[threadNum]);
-	memcpy(pfring_zc_pkt_buff_data(b, outzq[threadNum]), pkt, pktLen);
+	memcpy(data, pkt, pktLen);
 	b->len = pktLen;
 	while (pfring_zc_send_pkt(sendzq, &b, flush) < 0) {
 		usleep(1);

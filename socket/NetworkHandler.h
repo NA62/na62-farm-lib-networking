@@ -35,10 +35,10 @@
 namespace na62 {
 class NetworkHandler: public AExecutable {
 public:
-	NetworkHandler(std::string deviceName, uint numberOfThreads, void (*idelCallback)());
+	NetworkHandler(std::string deviceName, uint numberOfThreads, void (*idleCallback)());
 	virtual ~NetworkHandler();
 
-	bool init(void (*idelCallback)());
+	bool init(void (*idleCallback)());
 
 	int max_packet_len(const char *device);
 
