@@ -44,7 +44,7 @@ static pfring_zc_queue *sendzq;
 static pfring_zc_queue **outzq;
 static pfring_zc_buffer_pool *wsp;
 static pfring_zc_pkt_buff **buffers;
-static pfring_zc_stat **stats;
+static pfring_zc_stat *stats;
 /*
  * TODO: use one variable per queue instead of an atomic and sum up in the monitor connector
  */
@@ -107,7 +107,7 @@ bool NetworkHandler::init(const uint numberOfBuffers, void (*idleCallback)()) {
 
 	printf("Allocating %il buffers (%f GB) for %i worker threads\n",
 			totalNumBuffers,
-			totalNumBuffers * max_packet_len(deviceName_.c_str()) * 9E-9,
+			totalNumBuffers * max_packet_len(deviceName_.c_str()) * 1E-9,
 			numberOfThreads_);
 
 	zc = pfring_zc_create_cluster(cluster_id,
@@ -126,7 +126,7 @@ bool NetworkHandler::init(const uint numberOfBuffers, void (*idleCallback)()) {
 			sizeof(pfring_zc_queue *));
 	buffers = (pfring_zc_pkt_buff**) calloc(numberOfThreads_,
 			sizeof(pfring_zc_pkt_buff *));
-	stats = (pfring_zc_stat**) calloc(numberOfThreads_,
+	stats = (pfring_zc_stat*) calloc(numberOfThreads_,
 			sizeof(pfring_zc_stat *));
 //	buffers = new pfring_zc_pkt_buff*[numberOfThreads_];
 //	outzq = new pfring_zc_queue*[numberOfThreads_];
@@ -238,9 +238,9 @@ void NetworkHandler::thread() {
 void NetworkHandler::PrintStats() {
 	LOG_INFO<< "Queue\trecv\tdrop\t%drop" << ENDL;
 	for (uint i = 0; i < numberOfThreads_; i++) {
-		if (pfring_zc_stats(outzq[i], &&stats[i]) == 0) {
-			LOG_INFO << i << " \t" << stats[i]->recv << "\t" << stats[i]->drop << "\t"
-			<< 100. * stats[i]->drop / (stats[i]->recv + 1.) << ENDL;
+		if (pfring_zc_stats(outzq[i], &stats[i]) == 0) {
+			LOG_INFO << i << " \t" << stats[i].recv << "\t" << stats[i].drop << "\t"
+			<< 100. * stats[i].drop / (stats[i].recv + 1.) << ENDL;
 		} else {
 			LOG_ERROR << "Could not read stats from queue " << i  << ENDL;
 		}
@@ -250,8 +250,8 @@ void NetworkHandler::PrintStats() {
 uint64_t NetworkHandler::GetFramesDropped() {
 	uint64_t dropped = 0;
 	for (uint i = 0; i < numberOfThreads_; i++) {
-		if (pfring_zc_stats(outzq[i], &&stats[i]) == 0) {
-			dropped += stats[i]->drop;
+		if (pfring_zc_stats(outzq[i], &stats[i]) == 0) {
+			dropped += stats[i].drop;
 		} else {
 			LOG_ERROR << "Could not read drops from queue " << i  << ENDL;
 		}
