@@ -32,9 +32,11 @@ namespace na62 {
 	std::atomic<uint64_t> NetworkHandler::framesSent_(0);
 
 #ifdef MEASURE_TIME
-	std::atomic<uint64_t>** NetworkHandler::PacketTimeDiffVsTime_;
+	std::atomic<uint64_t>* NetworkHandler::PacketTimeDiffVsTime_ = (std::atomic<uint64_t>*) malloc(10000);
+
 	boost::timer::cpu_timer NetworkHandler::PacketTime_;
 	u_int32_t NetworkHandler::PreviousPacketTime_;
+
 #endif
 
 	std::string NetworkHandler::deviceName_ = "";
@@ -133,6 +135,9 @@ namespace na62 {
 		/*
 		 * Periodically send a gratuitous ARP frames
 		 */
+		NetworkHandler::ResetPacketTimeDiffVsTime();
+		LOG_INFO << "NHTHREAD" << ENDL;
+		NetworkHandler::PacketTime_.stop();
 		while (true) {
 			struct DataContainer arp = EthernetUtils::GenerateGratuitousARPv4(
 					GetMyMac().data(), GetMyIP());
