@@ -103,16 +103,16 @@ public:
 		return asyncSendData_.size();
 	}
 #ifdef MEASURE_TIME
-	static inline std::atomic<uint64_t>** GetPacketTimeDiffVsTime() {
+	static inline std::atomic<uint64_t>* GetPacketTimeDiffVsTime() {
 		return PacketTimeDiffVsTime_;
 	}
 
 	static void ResetPacketTimeDiffVsTime() {
-		for (int i = 0; i < 0x64 + 1; ++i) {
-			for (int j = 0; j < 0x64 + 1; ++j) {
-				PacketTimeDiffVsTime_[i][j] = 0;
+			for (int i = 0; i <= 0x64; ++i) {
+				for (int j = 0; j <= 0x64; ++j) {
+					PacketTimeDiffVsTime_[i*0x64 + j] = 0;
+				}
 			}
-		}
 	}
 	static void StopPacketTimer() {
 		PacketTime_.stop();
@@ -127,7 +127,6 @@ private:
 	static std::atomic<uint64_t> framesReceived_;
 	static std::atomic<uint64_t> framesSent_;
 
-	static std::atomic<uint64_t>** PacketTimeDiffVsTime_;
 
 	static u_int32_t numberOfThreads_;
 
@@ -141,6 +140,7 @@ private:
 	void thread();
 
 #ifdef MEASURE_TIME
+	static std::atomic<uint64_t>* PacketTimeDiffVsTime_;
 	static boost::timer::cpu_timer PacketTime_;
 	/*
 	 * Times in microseconds

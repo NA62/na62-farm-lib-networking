@@ -54,7 +54,8 @@ std::atomic<uint64_t> NetworkHandler::framesSent_(0);
 unsigned long long drops;
 
 #ifdef MEASURE_TIME
-std::atomic<uint64_t>** NetworkHandler::PacketTimeDiffVsTime_;
+std::atomic<uint64_t>* NetworkHandler::PacketTimeDiffVsTime_ = (std::atomic<uint64_t>*) malloc(10000);
+
 boost::timer::cpu_timer NetworkHandler::PacketTime_;
 u_int32_t NetworkHandler::PreviousPacketTime_;
 #endif
@@ -187,20 +188,39 @@ bool NetworkHandler::init(const uint numberOfBuffers, void (*idleCallback)()) {
 }
 
 int NetworkHandler::max_packet_len(const char *device) {
-	pfring *ring;
-	pfring_card_settings settings;
+//	pfring *ring;
+//	pfring_card_settings settings;
+//
+//	ring = pfring_open(device, 1536,
+//	PF_RING_PROMISC | PF_RING_ZC_NOT_REPROGRAM_RSS);
+//
+//	if (ring == NULL)
+//		return 1536;
+//
+//	pfring_get_card_settings(ring, &settings);
+//
+//	pfring_close(ring);
+//
+//	return settings.max_packet_size;
+	int max_len;
+	  pfring *ring;
 
-	ring = pfring_open(device, 1536,
-	PF_RING_PROMISC | PF_RING_ZC_NOT_REPROGRAM_RSS);
+	  ring = pfring_open(device, 1536, PF_RING_PROMISC);
 
-	if (ring == NULL)
-		return 1536;
+	  if(ring == NULL)
+	    return 1536;
 
-	pfring_get_card_settings(ring, &settings);
+	  if (ring->dna.dna_mapped_device) {
+	    max_len = ring->dna.dna_dev.mem_info.rx.packet_memory_slot_len;
+	  } else {
+	    max_len = pfring_get_mtu_size(ring);
+	    if (max_len == 0) max_len = 9000 /* Jumbo */;
+	    max_len += 14 /* Eth */ + 4 /* VLAN */;
+	  }
 
-	pfring_close(ring);
+	  pfring_close(ring);
 
-	return settings.max_packet_size;
+	  return max_len;
 }
 
 void NetworkHandler::thread() {
@@ -211,10 +231,6 @@ void NetworkHandler::thread() {
 			GetMyMac().data(), GetMyIP());
 
 #ifdef MEASURE_TIME
-	PacketTimeDiffVsTime_ = new std::atomic<uint64_t>*[0x64 + 1];
-	for (int i = 0; i < 0x64 + 1; i++) {
-		PacketTimeDiffVsTime_[i] = new std::atomic<uint64_t>[0x64 + 1] { };
-	}
 	NetworkHandler::ResetPacketTimeDiffVsTime();
 	PacketTime_.stop();
 #endif
