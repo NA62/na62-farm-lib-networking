@@ -131,8 +131,9 @@ void IPCHandler::updateState(STATE newState) {
 	if (!stateSender_ && !connectClient()) {
 		return;
 	}
-
+	std::cout<<"Sending ZMQ message" << std::endl;
 	stateSender_->send((const void*) &newState, (size_t) sizeof(STATE));
+	std::cout<<"Sent ZMQ message" <<  std::endl;
 }
 
 void IPCHandler::sendErrorMessage(std::string message) {

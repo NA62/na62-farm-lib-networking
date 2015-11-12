@@ -97,7 +97,7 @@ public:
 		 */
 		char * data = new char[64];
 
-		DataContainer container = { data, sizeof(struct ARP_HDR)};
+		DataContainer container = { data, sizeof(struct ARP_HDR), false};
 
 		struct ARP_HDR* hdr = (struct ARP_HDR*) data;
 

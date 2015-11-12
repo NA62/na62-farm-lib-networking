@@ -16,7 +16,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
-
+#include <monitoring/FarmStatistics.h>
 #include <options/Logging.h>
 
 namespace na62 {
@@ -105,7 +105,9 @@ void ZMQHandler::sendMessage(zmq::socket_t* socket, zmq::message_t&& msg,
 		int flags) {
 	while (ZMQHandler::IsRunning()) {
 		try {
+			FarmStatistics::addTime("Sending zmq message");
 			socket->send(msg, flags);
+			FarmStatistics::addTime("Sent zmq message");
 			break;
 		} catch (const zmq::error_t& ex) {
 			if (ex.num() != EINTR) { // try again if EINTR (signal caught)
@@ -114,7 +116,9 @@ void ZMQHandler::sendMessage(zmq::socket_t* socket, zmq::message_t&& msg,
 				ZMQHandler::DestroySocket(socket);
 				return;
 			}
+			LOG_INFO << "send while catch" << ENDL;
 		}
+		LOG_INFO << "send while just" << ENDL;
 	}
 }
 
