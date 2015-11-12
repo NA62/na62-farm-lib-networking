@@ -45,8 +45,8 @@ namespace na62 {
 
 	static pcap_t *handle;
 	char* dev, errbuff[PCAP_ERRBUF_SIZE];
-	bpf_u_int32 mask;		/* Our netmask */
-	bpf_u_int32 net;		/* Our IP */
+	bpf_u_int32 mask; /* Our netmask */
+	bpf_u_int32 net; /* Our IP */
 	std::vector<char> NetworkHandler::myMac_;
 	uint_fast32_t NetworkHandler::myIP_;
 
@@ -73,7 +73,6 @@ namespace na62 {
 			LOG_ERROR << "Couldn't get handle: " << errbuff << ENDL;
 		}
 
-
 	}
 
 	NetworkHandler::~NetworkHandler() {
@@ -88,14 +87,15 @@ namespace na62 {
 		/*
 		 * Periodically send a gratuitous ARP frames
 		 */
+#ifdef MEASURE_TIME
 		NetworkHandler::ResetPacketTimeDiffVsTime();
-		LOG_INFO << "NHTHREAD" << ENDL;
-		NetworkHandler::PacketTime_.stop();
-		while (true) {
+		PacketTime_.stop();
+#endif
 			struct DataContainer arp = EthernetUtils::GenerateGratuitousARPv4(
 					GetMyMac().data(), GetMyIP());
 			arp.ownerMayFreeData = false;
-
+		while (true) {
+			LOG_INFO << "Sending ARP" << ENDL;
 			AsyncSendFrame(std::move(arp));
 			boost::this_thread::sleep(boost::posix_time::seconds(1));
 		}
@@ -103,19 +103,20 @@ namespace na62 {
 
 	int NetworkHandler::GetNextFrame(struct pfring_pkthdr *hdr, char** pkt,
 			u_int pkt_len, uint_fast8_t wait_for_incoming_packet, uint queueNumber) {
+		pcap_pkthdr* headerptr;
+		const u_char* data=NULL;
 		LOG_INFO << "Ready to receive" << ENDL;
-		struct pcap_pkthdr header;
-		pcap_pkthdr* headerptr = &header;
-		int res =  pcap_next_ex(handle, &headerptr, &recvBuffer_);
-		if (res == -1 ){
+		int res = pcap_next_ex(handle, &headerptr, &data);
+		LOG_INFO << "Recieved" << ENDL;
+		if (res == -1 ) {
 			pcap_perror(handle,0);
 			LOG_ERROR << "Couldn't grab packet: " << ENDL;
 
 		}
-		hdr->len = header.len;
-		hdr->ts = header.ts;
-		hdr->caplen = header.caplen;
-		*pkt = (char*) recvBuffer_;
+		hdr->len = headerptr->len;
+		hdr->ts = headerptr->ts;
+		hdr->caplen = headerptr->caplen;
+		*pkt = (char*) data;
 		framesReceived_++;
 		bytesReceived_ += hdr->len;
 
@@ -127,8 +128,10 @@ namespace na62 {
 
 		framesSent_.fetch_add(1, std::memory_order_relaxed);
 		/* Send packet */
+		LOG_INFO << "PACP Sending" << ENDL;
 		int res = pcap_inject(handle, pkt, pktLen);
-		if(res == -1){
+		LOG_INFO << "PACP Sended" << ENDL;
+		if(res == -1) {
 			pcap_perror(handle,0);
 			LOG_ERROR << "Couldn't send frame " << ENDL;
 		}
