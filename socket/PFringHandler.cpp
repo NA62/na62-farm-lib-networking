@@ -42,7 +42,8 @@ std::atomic<uint64_t> NetworkHandler::framesReceived_(0);
 std::atomic<uint64_t> NetworkHandler::framesSent_(0);
 
 #ifdef MEASURE_TIME
-std::atomic<uint64_t>** NetworkHandler::PacketTimeDiffVsTime_;
+//std::atomic<uint64_t>* NetworkHandler::PacketTimeDiffVsTime_;
+std::atomic<uint64_t>* NetworkHandler::PacketTimeDiffVsTime_ = (std::atomic<uint64_t>*) malloc(10000);
 boost::timer::cpu_timer NetworkHandler::PacketTime_;
 u_int32_t NetworkHandler::PreviousPacketTime_;
 #endif
@@ -111,10 +112,10 @@ void NetworkHandler::thread() {
 	arp.ownerMayFreeData = false;
 
 #ifdef MEASURE_TIME
-	PacketTimeDiffVsTime_ = new std::atomic<uint64_t>*[0x64 + 1];
-	for (int i = 0; i < 0x64 + 1; i++) {
-		PacketTimeDiffVsTime_[i] = new std::atomic<uint64_t>[0x64 + 1] { };
-	}
+//	PacketTimeDiffVsTime_ = new std::atomic<uint64_t>*[0x64 + 1];
+//	for (int i = 0; i < 0x64 + 1; i++) {
+//		PacketTimeDiffVsTime_[i] = new std::atomic<uint64_t>[0x64 + 1] { };
+//	}
 	NetworkHandler::ResetPacketTimeDiffVsTime();
 	PacketTime_.stop();
 #endif
