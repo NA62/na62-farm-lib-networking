@@ -27,6 +27,8 @@
 #include "NetworkHandler.h"
 #include "PFring.h"
 #include <pfring.h>
+#include "pfring_zc.h"
+#include "zutils.h"
 
 #include <l0/MEP.h>
 #include <l0/MEPFragment.h>
@@ -54,7 +56,8 @@ std::atomic<uint64_t> NetworkHandler::framesSent_(0);
 unsigned long long drops;
 
 #ifdef MEASURE_TIME
-std::atomic<uint64_t>* NetworkHandler::PacketTimeDiffVsTime_ = (std::atomic<uint64_t>*) malloc(10000);
+std::atomic<uint64_t>* NetworkHandler::PacketTimeDiffVsTime_ = (std::atomic<
+		uint64_t>*) malloc(10000);
 
 boost::timer::cpu_timer NetworkHandler::PacketTime_;
 u_int32_t NetworkHandler::PreviousPacketTime_;
@@ -105,14 +108,14 @@ bool NetworkHandler::init(const uint numberOfBuffers, void (*idleCallback)()) {
 	// TODO: understand how to properly compute the number of buffers (1.5 is just a random try)
 	long totalNumBuffers = (1 * MAX_CARD_SLOTS)
 			+ 1.5 * numberOfBuffers+ PREFETCH_BUFFERS;
-
+	const char* devname = deviceName_.c_str();
 	printf("Allocating %il buffers (%f GB) for %i worker threads\n",
 			totalNumBuffers,
-			totalNumBuffers * max_packet_len(deviceName_.c_str()) * 1E-9,
+			totalNumBuffers * max_packet_len(devname) * 1E-9,
 			numberOfThreads_);
 
 	zc = pfring_zc_create_cluster(cluster_id,
-			max_packet_len(deviceName_.c_str()), 0, totalNumBuffers, 1,
+			max_packet_len(devname), 0, totalNumBuffers, 1,
 			"/hugepages/" /*NULL / auto hugetlb mountpoint */
 			);
 	if (zc == NULL) {
@@ -187,7 +190,7 @@ bool NetworkHandler::init(const uint numberOfBuffers, void (*idleCallback)()) {
 	return true;
 }
 
-int NetworkHandler::max_packet_len(const char *device) {
+//int NetworkHandler::max_packet_len(const char *device) {
 //	pfring *ring;
 //	pfring_card_settings settings;
 //
@@ -202,26 +205,26 @@ int NetworkHandler::max_packet_len(const char *device) {
 //	pfring_close(ring);
 //
 //	return settings.max_packet_size;
-	int max_len;
-	  pfring *ring;
-
-	  ring = pfring_open(device, 1536, PF_RING_PROMISC);
-
-	  if(ring == NULL)
-	    return 1536;
-
-	  if (ring->dna.dna_mapped_device) {
-	    max_len = ring->dna.dna_dev.mem_info.rx.packet_memory_slot_len;
-	  } else {
-	    max_len = pfring_get_mtu_size(ring);
-	    if (max_len == 0) max_len = 9000 /* Jumbo */;
-	    max_len += 14 /* Eth */ + 4 /* VLAN */;
-	  }
-
-	  pfring_close(ring);
-
-	  return max_len;
-}
+//	int max_len;
+//	  pfring *ring;
+//
+//	  ring = pfring_open(device, 1536, PF_RING_PROMISC);
+//
+//	  if(ring == NULL)
+//	    return 1536;
+//
+//	  if (ring->dna_mapped_device) {
+//	    max_len = ring->dna.dna_dev.mem_info.rx.packet_memory_slot_len;
+//	  } else {
+//	    max_len = pfring_get_mtu_size(ring);
+//	    if (max_len == 0) max_len = 9000 /* Jumbo */;
+//	    max_len += 14 /* Eth */ + 4 /* VLAN */;
+//	  }
+//
+//	  pfring_close(ring);
+//
+//	  return max_len;
+//}
 
 void NetworkHandler::thread() {
 	/*
@@ -258,7 +261,7 @@ void NetworkHandler::PrintStats() {
 			LOG_INFO << i << " \t" << stats[i].recv << "\t" << stats[i].drop << "\t"
 			<< 100. * stats[i].drop / (stats[i].recv + 1.) << ENDL;
 		} else {
-			LOG_ERROR << "Could not read stats from queue " << i  << ENDL;
+			LOG_ERROR << "Could not read stats from queue " << i << ENDL;
 		}
 	}
 }
@@ -269,7 +272,7 @@ uint64_t NetworkHandler::GetFramesDropped() {
 		if (pfring_zc_stats(outzq[i], &stats[i]) == 0) {
 			dropped += stats[i].drop;
 		} else {
-			LOG_ERROR << "Could not read drops from queue " << i  << ENDL;
+			LOG_ERROR<< "Could not read drops from queue " << i << ENDL;
 		}
 	}
 	return dropped;

@@ -41,7 +41,7 @@ public:
 
 	bool init(const uint numberOfBuffers, void (*idleCallback)());
 
-	int max_packet_len(const char *device);
+//	int max_packet_len(const char *device);
 
 //	int32_t rr_distribution_func(pfring_zc_pkt_buff *pkt_handle,
 //			pfring_zc_queue *in_queue, void *user);
