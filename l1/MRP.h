@@ -19,7 +19,7 @@
 #define __USE_BIG_ENDIAN_FOR_MRP
 
 namespace na62 {
-namespace cream {
+namespace l1 {
 
 #ifdef __USE_BIG_ENDIAN_FOR_MRP
 /**
@@ -143,6 +143,6 @@ struct MRP_FRAME_HDR {
 #endif
 
 }
-/* namespace cream */
+/* namespace l1 */
 } /* namespace na62 */
 #endif /* MRP_H_ */
