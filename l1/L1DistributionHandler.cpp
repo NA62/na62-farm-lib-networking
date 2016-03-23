@@ -156,7 +156,7 @@ void L1DistributionHandler::thread() {
 				boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS / 10));
 				continue;
 			}
-
+			//LOG_ERROR << "Sending out data request";
 			Async_SendMRP(multicastRequests);
 		} else {
 			/*
