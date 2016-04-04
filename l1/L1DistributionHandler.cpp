@@ -65,9 +65,10 @@ l1::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event, bool zSuppressed) {
 void L1DistributionHandler::Async_RequestL1DataMulticast(Event * event,
 bool zSuppressed) {
 // Don't create data requests if we are beyond end of burst and we are about to cleanup for the new burst
-	if (BurstIdHandler::flushBurst())
+	if (BurstIdHandler::flushBurst()) {
+		LOG_ERROR << "Skipping data requests because burst is long finished";
 		return;
-
+	}
 	TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event, zSuppressed);
 
 	/*
@@ -137,7 +138,8 @@ void L1DistributionHandler::thread() {
 		TRIGGER_RAW_HDR* hdr;
 		while (multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP && !multicastMRPQueue.empty()) {
 			while (BurstIdHandler::flushBurst() && multicastMRPQueue.try_pop(hdr)) {
-					delete hdr;
+				LOG_ERROR << "Skipping data requests because burst is long finished";
+				delete hdr;
 			}
 
 			while (!multicastMRPQueue.try_pop(hdr)) {
@@ -156,7 +158,7 @@ void L1DistributionHandler::thread() {
 				boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS / 10));
 				continue;
 			}
-
+			//LOG_ERROR << "Sending out data request";
 			Async_SendMRP(multicastRequests);
 		} else {
 			/*
@@ -217,7 +219,7 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 
 		NetworkHandler::AsyncSendFrame( { frame, offset, true });
 		// Don't put too many packets in the queue at the same time
-		boost::this_thread::sleep(boost::posix_time::microsec(uint_fast32_t(MIN_USEC_BETWEEN_L1_REQUESTS / L1_MulticastRequestHdrs.size())));
+		boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS);
 	}
 	delete[] buff;
 
