@@ -219,7 +219,7 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 
 		NetworkHandler::AsyncSendFrame( { frame, offset, true });
 		// Don't put too many packets in the queue at the same time
-		boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS);
+		boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS));
 	}
 	delete[] buff;
 
