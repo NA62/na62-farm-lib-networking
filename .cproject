@@ -63,7 +63,6 @@
 				<externalSettings containerId="na62-farm-lib;cdt.managedbuild.config.gnu.lib.release.310524003.808849853" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/na62-farm-lib"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/na62-farm-lib/GLOG_DEBUG"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/na62-farm-lib/Debug"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="na62-farm-lib" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
