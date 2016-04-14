@@ -40,7 +40,6 @@ MRP_FRAME_HDR* L1DistributionHandler::L1_UnicastRequestHdr;
 
 uint64_t L1DistributionHandler::L1TriggersSent = 0;
 uint64_t L1DistributionHandler::L1MRPsSent = 0;
-uint L1DistributionHandler::NUMBER_OF_EBS = 0;
 uint L1DistributionHandler::MAX_TRIGGERS_PER_L1MRP = 0;
 uint L1DistributionHandler::MIN_USEC_BETWEEN_L1_REQUESTS = 0;
 
@@ -65,9 +64,10 @@ l1::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event, bool zSuppressed) {
 void L1DistributionHandler::Async_RequestL1DataMulticast(Event * event,
 bool zSuppressed) {
 // Don't create data requests if we are beyond end of burst and we are about to cleanup for the new burst
-	if (BurstIdHandler::flushBurst())
+	if (BurstIdHandler::flushBurst()) {
+		LOG_ERROR << "Skipping data requests because burst is long finished";
 		return;
-
+	}
 	TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event, zSuppressed);
 
 	/*
@@ -88,12 +88,10 @@ bool zSuppressed, const std::vector<uint_fast16_t> subSourceIDIs) {
 //	}
 }
 
-void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
-		uint minUsecBetweenL1Requests,
+void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetweenL1Requests,
 		std::vector<std::string> multicastGroupNames, uint sourcePort,
 		uint destinationPort) {
 	MAX_TRIGGERS_PER_L1MRP = maxTriggersPerMRP;
-	NUMBER_OF_EBS = numberOfEBs;
 	MIN_USEC_BETWEEN_L1_REQUESTS = minUsecBetweenL1Requests;
 
 	for (std::string multicastIP : multicastGroupNames) {
@@ -137,7 +135,8 @@ void L1DistributionHandler::thread() {
 		TRIGGER_RAW_HDR* hdr;
 		while (multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP && !multicastMRPQueue.empty()) {
 			while (BurstIdHandler::flushBurst() && multicastMRPQueue.try_pop(hdr)) {
-					delete hdr;
+				LOG_ERROR << "Skipping data requests because burst is long finished";
+				delete hdr;
 			}
 
 			while (!multicastMRPQueue.try_pop(hdr)) {
@@ -217,7 +216,7 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 
 		NetworkHandler::AsyncSendFrame( { frame, offset, true });
 		// Don't put too many packets in the queue at the same time
-		boost::this_thread::sleep(boost::posix_time::microsec(uint_fast32_t(MIN_USEC_BETWEEN_L1_REQUESTS / L1_MulticastRequestHdrs.size())));
+		boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS));
 	}
 	delete[] buff;
 

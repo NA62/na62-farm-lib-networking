@@ -45,7 +45,7 @@ public:
 		return L1DistributionHandler::L1MRPsSent;
 	}
 
-	static void Initialize(uint maxTriggersPerMRP, uint numberOfEBs,
+	static void Initialize(uint maxTriggersPerMRP,
 			uint minUsecBetweenL1Requests,
 			std::vector<std::string> multicastGroupNames, uint sourcePort,
 			uint destinationPort);
@@ -71,7 +71,6 @@ private:
 	static uint64_t L1MRPsSent;
 
 	static uint MAX_TRIGGERS_PER_L1MRP;
-	static uint NUMBER_OF_EBS;
 	static uint MIN_USEC_BETWEEN_L1_REQUESTS;
 };
 
