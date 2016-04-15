@@ -65,7 +65,7 @@ void L1DistributionHandler::Async_RequestL1DataMulticast(Event * event,
 bool zSuppressed) {
 // Don't create data requests if we are beyond end of burst and we are about to cleanup for the new burst
 	if (BurstIdHandler::flushBurst()) {
-		LOG_ERROR << "Skipping data requests because burst is long finished";
+		LOG_ERROR("Skipping data requests because burst is long finished");
 		return;
 	}
 	TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event, zSuppressed);
@@ -78,12 +78,12 @@ bool zSuppressed) {
 
 void L1DistributionHandler::Async_RequestL1DataUnicast(const Event *event,
 bool zSuppressed, const std::vector<uint_fast16_t> subSourceIDIs) {
-	LOG_INFO << "Unicast data request not implemented!" << ENDL;
+	LOG_INFO("Unicast data request not implemented!");
 //	 cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
 //			zSuppressed);
 //	auto pair = std::make_pair(triggerHDR, crateCREAMIDs);
 //	while (!unicastMRPWithIPsQueues[threadNum].push(pair)) {
-//		LOG_ERROR<<"L1DistributionHandler input queue overrun!";
+//		LOG_ERROR("L1DistributionHandler input queue overrun!");
 //		usleep(1000);
 //	}
 }
@@ -135,7 +135,7 @@ void L1DistributionHandler::thread() {
 		TRIGGER_RAW_HDR* hdr;
 		while (multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP && !multicastMRPQueue.empty()) {
 			while (BurstIdHandler::flushBurst() && multicastMRPQueue.try_pop(hdr)) {
-				LOG_ERROR << "Skipping data requests because burst is long finished";
+				LOG_ERROR("Skipping data requests because burst is long finished");
 				delete hdr;
 			}
 
@@ -155,7 +155,7 @@ void L1DistributionHandler::thread() {
 				boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS / 10));
 				continue;
 			}
-			//LOG_ERROR << "Sending out data request";
+			//LOG_ERROR("Sending out data request");
 			Async_SendMRP(multicastRequests);
 		} else {
 			/*
