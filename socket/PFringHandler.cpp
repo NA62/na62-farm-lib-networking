@@ -82,11 +82,11 @@ NetworkHandler::NetworkHandler(std::string deviceName) {
 				(char*) queDeviceName.data(), snaplen, flags);
 
 		if (queueRings_[i]->enable_ring() >= 0) {
-			LOG_INFO<< "Successfully opened device "
-			<< queueRings_[i]->get_device_name();
+			LOG_INFO("Successfully opened device "
+			<< queueRings_[i]->get_device_name());
 		} else {
-			LOG_ERROR << "Unable to open device " << queDeviceName
-			<< "! Is pf_ring not loaded or do you use quick mode and have already a socket bound to this device?!";
+			LOG_ERROR("Unable to open device " << queDeviceName
+			<< "! Is pf_ring not loaded or do you use quick mode and have already a socket bound to this device?!");
 			exit(1);
 		}
 	}
@@ -114,7 +114,7 @@ void NetworkHandler::thread() {
 		AAARP << "ARP Gratis" << pktLen << " ";
 		for (int i = 0; i < pktLen; i++)
 			AAARP << std::hex << ((char) (*(pbuff + i)) & 0xFF) << " ";
-//        LOG_INFO << AAARP.str() << ENDL;
+//        LOG_INFO(AAARP.str());
 
 		AsyncSendFrame(std::move(arp));
 		boost::this_thread::sleep(boost::posix_time::seconds(60));
@@ -123,11 +123,11 @@ void NetworkHandler::thread() {
 
 void NetworkHandler::PrintStats() {
 	pfring_stat stats = { 0 };
-	LOG_INFO<< "Ring\trecv\tdrop\t%drop" << ENDL;
+	LOG_INFO("Ring\trecv\tdrop\t%drop");
 	for (uint i = 0; i < numberOfQueues_; i++) {
 		queueRings_[i]->get_stats(&stats);
-		LOG_INFO<< i << " \t" << stats.recv << "\t" << stats.drop << "\t"
-		<< 100. * stats.drop / (stats.recv + 1.) << ENDL;
+		LOG_INFO(i << " \t" << stats.recv << "\t" << stats.drop << "\t"
+		<< 100. * stats.drop / (stats.recv + 1.));
 	}
 }
 
