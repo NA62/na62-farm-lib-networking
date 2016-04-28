@@ -152,8 +152,15 @@
 			<resource resourceType="PROJECT" workspacePath="/na62-farm-lib-networking"/>
 		</configuration>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.lib.debug.1267067609.872377044;cdt.managedbuild.config.gnu.lib.debug.1267067609.872377044.;cdt.managedbuild.tool.gnu.cpp.compiler.lib.debug.480889537;cdt.managedbuild.tool.gnu.cpp.compiler.input.1882378622">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.lib.debug.1267067609.872377044;cdt.managedbuild.config.gnu.lib.debug.1267067609.872377044.;cdt.managedbuild.tool.gnu.c.compiler.lib.debug.748887094;cdt.managedbuild.tool.gnu.c.compiler.input.2136627009">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.lib.release.148627624.227481869;cdt.managedbuild.config.gnu.lib.release.148627624.227481869.;cdt.managedbuild.tool.gnu.c.compiler.lib.release.1992371894;cdt.managedbuild.tool.gnu.c.compiler.input.1133832553">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
@@ -173,5 +180,4 @@
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.make.core.GCCStandardMakePerFileProfile"/>
 		</scannerConfigBuildInfo>
 	</storageModule>
-	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 </cproject>
