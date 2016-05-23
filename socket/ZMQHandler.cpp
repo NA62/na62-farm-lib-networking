@@ -29,7 +29,7 @@ std::mutex ZMQHandler::connectMutex_;
 std::map<zmq::socket_t*, std::string> ZMQHandler::allSockets_;
 
 void ZMQHandler::Initialize(const int numberOfIOThreads) {
-	context_ = new zmq::context_t(numberOfIOThreads);
+	context_ = new zmq::context_t(numberOfIOThreads); // can throw!
 }
 void ZMQHandler::Stop() {
 	running_ = false;
@@ -42,10 +42,10 @@ void ZMQHandler::shutdown() {
 zmq::socket_t* ZMQHandler::GenerateSocket(std::string name, int socketType,
 		int highWaterMark) {
 	int linger = 0;
-	zmq::socket_t* socket = new zmq::socket_t(*context_, socketType);
-	socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+	zmq::socket_t* socket = new zmq::socket_t(*context_, socketType); // can throw!
+	socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger)); // can throw!
 
-	socket->setsockopt(ZMQ_SNDHWM, &highWaterMark, sizeof(highWaterMark));
+	socket->setsockopt(ZMQ_SNDHWM, &highWaterMark, sizeof(highWaterMark)); // can throw!
 
 	numberOfActiveSockets_++;
 	allSockets_[socket] = name;
@@ -109,8 +109,7 @@ void ZMQHandler::sendMessage(zmq::socket_t* socket, zmq::message_t&& msg,
 			break;
 		} catch (const zmq::error_t& ex) {
 			if (ex.num() != EINTR) { // try again if EINTR (signal caught)
-				LOG_ERROR(ex.what());
-
+				LOG_ERROR("Failed to send message over ZMQ because " << ex.what());
 				ZMQHandler::DestroySocket(socket);
 				return;
 			}

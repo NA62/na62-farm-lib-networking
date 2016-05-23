@@ -13,6 +13,7 @@
 #include <iostream>
 #include <zmq.h>
 #include <zmq.hpp>
+#include <options/Logging.h>
 
 #include "../socket/ZMQHandler.h"
 
@@ -81,15 +82,18 @@ bool IPCHandler::connectClient() {
 	if (!ZMQHandler::IsRunning()) {
 		return false;
 	}
+	try {
+		stateSender_ = ZMQHandler::GenerateSocket("stateSender_", ZMQ_PUSH);
+		statisticsSender_ = ZMQHandler::GenerateSocket("statisticsSender_", ZMQ_PUSH);
+		commandReceiver_ = ZMQHandler::GenerateSocket("commandReceiver_", ZMQ_PULL);
 
-	stateSender_ = ZMQHandler::GenerateSocket("stateSender_", ZMQ_PUSH);
-	statisticsSender_ = ZMQHandler::GenerateSocket("statisticsSender_", ZMQ_PUSH);
-	commandReceiver_ = ZMQHandler::GenerateSocket("commandReceiver_", ZMQ_PULL);
-
-	stateSender_->connect(StateAddress);
-	statisticsSender_->connect(StatisticsAddress);
-	commandReceiver_->bind(CommandAddressServer);
-
+		stateSender_->connect(StateAddress);
+		statisticsSender_->connect(StatisticsAddress);
+		commandReceiver_->bind(CommandAddressServer);
+	} catch (const zmq::error_t& ex) {
+		LOG_ERROR("Failed to connect ZMQ client because: " << ex.what());
+		return false;
+	}
 	return true;
 }
 
@@ -97,15 +101,18 @@ bool IPCHandler::bindServer() {
 	if (!ZMQHandler::IsRunning()) {
 		return false;
 	}
+	try {
+		stateReceiver_ = ZMQHandler::GenerateSocket("stateReceiver_", ZMQ_PULL);
+		statisticsReceiver_ = ZMQHandler::GenerateSocket("statisticsReceiver_", ZMQ_PULL);
+		commandSender_ = ZMQHandler::GenerateSocket("commandSender_", ZMQ_PUSH);
 
-	stateReceiver_ = ZMQHandler::GenerateSocket("stateReceiver_", ZMQ_PULL);
-	statisticsReceiver_ = ZMQHandler::GenerateSocket("statisticsReceiver_", ZMQ_PULL);
-	commandSender_ = ZMQHandler::GenerateSocket("commandSender_", ZMQ_PUSH);
-
-	stateReceiver_->bind(StateAddressServer);
-	statisticsReceiver_->bind(StatisticsAddressServer);
-	commandSender_->connect(CommandAddress);
-
+		stateReceiver_->bind(StateAddressServer);
+		statisticsReceiver_->bind(StatisticsAddressServer);
+		commandSender_->connect(CommandAddress);
+	} catch (const zmq::error_t& ex) {
+		LOG_ERROR("Failed to connect ZMQ client because: " << ex.what());
+		return false;
+	}
 	return true;
 }
 
@@ -116,11 +123,15 @@ void IPCHandler::setTimeout(int timeout) {
 	if (!statisticsReceiver_ && !bindServer()) {
 		return;
 	}
-
+	try {
 	statisticsReceiver_->setsockopt(ZMQ_RCVTIMEO, (const void*) &timeout,
 			(size_t) sizeof(timeout));
 	stateReceiver_->setsockopt(ZMQ_RCVTIMEO, (const void*) &timeout,
 			(size_t) sizeof(timeout));
+	} catch (const zmq::error_t& ex) {
+		LOG_ERROR("Failed to set ZMQ timeout: " << ex.what());
+		return;
+	}
 }
 
 void IPCHandler::updateState(STATE newState) {
@@ -131,8 +142,11 @@ void IPCHandler::updateState(STATE newState) {
 	if (!stateSender_ && !connectClient()) {
 		return;
 	}
-
-	stateSender_->send((const void*) &newState, (size_t) sizeof(STATE));
+	try {
+		stateSender_->send((const void*) &newState, (size_t) sizeof(STATE));
+	} catch (const zmq::error_t& ex) {
+		LOG_ERROR("Failed to update state over ZMQ because:"  << ex.what());
+	}
 }
 
 void IPCHandler::sendErrorMessage(std::string message) {
@@ -159,6 +173,7 @@ void IPCHandler::sendStatistics(std::string name, std::string values) {
 		memcpy(m.data(), message.data(), message.size());
 		statisticsSender_->send(m);
 	} catch (const zmq::error_t& ex) {
+		LOG_ERROR("Failed to send statistics over ZMQ because:"  << ex.what());
 	}
 }
 
@@ -187,6 +202,7 @@ void IPCHandler::sendCommand(std::string command) {
 			ZMQHandler::DestroySocket(commandSender_);
 			commandSender_ = nullptr;
 		}
+		LOG_ERROR("Failed to send command over ZMQ because:"  << ex.what());
 	}
 }
 
@@ -213,6 +229,7 @@ std::string IPCHandler::getNextCommand() {
 			ZMQHandler::DestroySocket(commandReceiver_);
 			commandReceiver_ = nullptr;
 		}
+		LOG_ERROR("Failed to get command over ZMQ because:"  << ex.what());
 	}
 	return "";
 }
@@ -239,6 +256,8 @@ std::string IPCHandler::tryToReceiveStatistics() {
 			ZMQHandler::DestroySocket(statisticsReceiver_);
 			statisticsReceiver_ = nullptr;
 		}
+		LOG_ERROR("Failed to get statistics over ZMQ because:"  << ex.what());
+
 	}
 	return "";
 }
@@ -264,6 +283,7 @@ STATE IPCHandler::tryToReceiveState() {
 			ZMQHandler::DestroySocket(stateReceiver_);
 			stateReceiver_ = nullptr;
 		}
+		LOG_ERROR("Failed to get state over ZMQ because:"  << ex.what());
 	}
 	return TIMEOUT;
 }
