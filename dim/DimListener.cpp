@@ -81,7 +81,7 @@ void DimListener::infoHandler() {
 			callback(burstID);
 		}
 	} else if (curr == &burstTimeInfo_) {
-		LOG_INFO("Received burst time info update");
+		//LOG_INFO("Received burst time info update");
 		if (burstTimeInfo_.getSize() != 0) {
 			BurstTimeInfo bti;
 			uint* rawbti = (uint*) burstTimeInfo_.getData();
@@ -89,7 +89,7 @@ void DimListener::infoHandler() {
 			bti.sobTime = rawbti[1];
 			bti.eobTime = rawbti[2];
 			bti.runNumber = rawbti[3];
-			LOG_INFO ("Received burst time info update: " << bti.burstID << " " << bti.sobTime
+			//LOG_INFO ("Received burst time info update: " << bti.burstID << " " << bti.sobTime
 					<< " " <<bti.eobTime << " " << bti.runNumber);
 
 			if (bti.eobTime != 0 && bti.runNumber != 0) {
