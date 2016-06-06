@@ -27,7 +27,7 @@ DimListener::DimListener() :
 				"RunControl/BurstNumber", -1, this), runNumber_(
 				"RunControl/RunNumber", -1, this), SOB_TS_("NA62/Timing/SOB", 0,
 				this), EOB_TS_("NA62/Timing/EOB", 0, this),
-				burstTimeInfo_("RunControl/BurstTimeStruct", 0, this), thread(nullptr) {
+				burstTimeInfo_("RunControl/BurstTimeStruct", nullptr, 0, this), thread(nullptr) {
 }
 
 DimListener::~DimListener() {
@@ -84,12 +84,12 @@ void DimListener::infoHandler() {
 		//LOG_INFO("Received burst time info update");
 		if (burstTimeInfo_.getSize() != 0) {
 			BurstTimeInfo bti;
-			uint* rawbti = (uint*) burstTimeInfo_.getData();
+			int32_t* rawbti = (int32_t*) burstTimeInfo_.getData();
 			bti.burstID = rawbti[0];
 			bti.sobTime = rawbti[1];
 			bti.eobTime = rawbti[2];
 			bti.runNumber = rawbti[3];
-			//LOG_INFO ("Received burst time info update: " << bti.burstID << " " << bti.sobTime
+			LOG_INFO ("Received burst time info update: " << bti.burstID << " " << bti.sobTime
 					<< " " <<bti.eobTime << " " << bti.runNumber);
 
 			if (bti.eobTime != 0 && bti.runNumber != 0) {

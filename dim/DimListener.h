@@ -20,10 +20,10 @@ namespace na62 {
 namespace dim {
 
 struct BurstTimeInfo{
-	uint burstID;
-	uint sobTime;
-	uint eobTime;
-	uint runNumber;
+	int32_t burstID;
+	int32_t sobTime;
+	int32_t eobTime;
+	int32_t runNumber;
 };
 
 class DimListener: public DimClient {
