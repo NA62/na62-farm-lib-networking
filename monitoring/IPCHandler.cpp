@@ -41,6 +41,8 @@ zmq::socket_t* IPCHandler::stateReceiver_ = nullptr;
 zmq::socket_t* IPCHandler::statisticsReceiver_ = nullptr;
 zmq::socket_t* IPCHandler::commandReceiver_ = nullptr;
 
+
+
 bool IPCHandler::stateSenderActive_;
 bool IPCHandler::statisticsSenderActive_;
 bool IPCHandler::commandSenderActive_;
@@ -73,6 +75,9 @@ void IPCHandler::shutDown() {
 	}
 
 }
+
+
+
 
 bool IPCHandler::isRunning() {
 	return ZMQHandler::IsRunning();
@@ -181,6 +186,7 @@ void IPCHandler::sendStatistics(std::string name, std::string values) {
  * Sends the given string to the remote process calling {@link getNextCommand}
  */
 void IPCHandler::sendCommand(std::string command) {
+
 	if (!ZMQHandler::IsRunning()) {
 		return;
 	}
@@ -205,6 +211,11 @@ void IPCHandler::sendCommand(std::string command) {
 		LOG_ERROR("Failed to send command over ZMQ because:"  << ex.what());
 	}
 }
+
+//void setTelsimStop(){
+//	telsimStop_ = 1;
+	//return IPCHandler::telsimStop_;
+//}
 
 /**
  * Blocks until the next command has been received

@@ -30,6 +30,7 @@ enum STATE {
 class IPCHandler {
 public:
 
+
 	static void updateState(STATE newState);
 	static void sendErrorMessage(std::string Message);
 	static void sendStatistics(std::string name, std::string values);
@@ -42,6 +43,9 @@ public:
 	static void setTimeout(int timeout);
 	static void shutDown();
 
+
+
+
 	static bool isRunning();
 private:
 
@@ -50,10 +54,14 @@ private:
 	 */
 	static bool connectClient();
 
+
+
 	/**
 	 * Returns true if all sockets were bound, false if ZMQ is shut down
 	 */
 	static bool bindServer();
+
+
 
 	static zmq::socket_t* stateSender_;
 	static zmq::socket_t* statisticsSender_;

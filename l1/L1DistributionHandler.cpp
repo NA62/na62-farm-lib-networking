@@ -14,6 +14,7 @@
 #include <glog/logging.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+//#include <src/options/MyOptions.h>
 #include <netinet/udp.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -37,6 +38,10 @@ tbb::concurrent_queue<TRIGGER_RAW_HDR*> L1DistributionHandler::multicastMRPQueue
 
 std::vector<MRP_FRAME_HDR*> L1DistributionHandler::L1_MulticastRequestHdrs;
 MRP_FRAME_HDR* L1DistributionHandler::L1_UnicastRequestHdr;
+
+in_port_t sport;
+in_addr_t saddr;
+uint_fast32_t multiIP[100];
 
 uint64_t L1DistributionHandler::L1TriggersSent = 0;
 uint64_t L1DistributionHandler::L1MRPsSent = 0;
@@ -91,6 +96,10 @@ bool zSuppressed, const std::vector<uint_fast16_t> subSourceIDIs) {
 void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetweenL1Requests,
 		std::vector<std::string> multicastGroupNames, uint sourcePort,
 		uint destinationPort) {
+
+	sport = destinationPort;
+	int i = 0;
+
 	MAX_TRIGGERS_PER_L1MRP = maxTriggersPerMRP;
 	MIN_USEC_BETWEEN_L1_REQUESTS = minUsecBetweenL1Requests;
 
@@ -99,7 +108,9 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetwe
 		L1_MulticastRequestHdrs.push_back(hdr);
 
 		const uint_fast32_t multicastGroup = inet_addr(multicastIP.data());
-
+		//saddr = multicastGroup;
+		multiIP[i] = multicastGroup;
+		++i;
 		EthernetUtils::GenerateUDP((char*) hdr,
 				EthernetUtils::GenerateMulticastMac(multicastGroup),
 				multicastGroup, sourcePort, destinationPort);
@@ -128,6 +139,7 @@ void L1DistributionHandler::thread() {
 	multicastRequests.reserve(MAX_TRIGGERS_PER_L1MRP);
 
 	while (true) {
+
 		/*
 		 * pop some elements from the queue
 		 */
@@ -155,6 +167,7 @@ void L1DistributionHandler::thread() {
 				boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS / 10));
 				continue;
 			}
+
 			//LOG_ERROR("Sending out data request");
 			Async_SendMRP(multicastRequests);
 		} else {
@@ -183,6 +196,7 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 	const uint sizeOfMRP = offset + sizeof(TRIGGER_RAW_HDR)
 					* (triggers.size() > MAX_TRIGGERS_PER_L1MRP ? MAX_TRIGGERS_PER_L1MRP : triggers.size());
 
+
 	/*
 	 * Copy the dataHDR into a new buffer which will be sent afterwards
 	 */
@@ -199,9 +213,10 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 		delete trigger;
 		numberOfTriggers++;
 	}
-
+	int i = 0;
 	for (auto dataHDR : L1_MulticastRequestHdrs) {
 		char* frame = new char[offset];
+
 		memcpy(frame, buff, offset);
 		memcpy(frame, reinterpret_cast<const char*>(dataHDR),
 				sizeof(MRP_FRAME_HDR));
@@ -209,12 +224,13 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 		MRP_FRAME_HDR* dataHDRToBeSent = (MRP_FRAME_HDR*) frame;
 		dataHDRToBeSent->SetNumberOfTriggers(numberOfTriggers);
 
-		dataHDRToBeSent->udp.ip.check = 0;
-		dataHDRToBeSent->udp.ip.check = EthernetUtils::GenerateChecksum((const char*) (&dataHDRToBeSent->udp.ip), sizeof(iphdr));
-		dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
-				&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
+		//dataHDRToBeSent->udp.ip.check = 0;
+		//dataHDRToBeSent->udp.ip.check = EthernetUtils::GenerateChecksum((const char*) (&dataHDRToBeSent->udp.ip), sizeof(iphdr));
+		//dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
-		NetworkHandler::AsyncSendFrame( { frame, offset, true });
+		saddr = multiIP[i];
+		NetworkHandler::AsyncSendFrame( { frame, offset, true, sport, saddr });
+		++i;
 		// Don't put too many packets in the queue at the same time
 		boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS));
 	}

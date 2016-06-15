@@ -9,6 +9,7 @@
 #ifndef NetworkHandler_H_
 #define NetworkHandler_H_
 
+
 #include <sys/types.h>
 #include <utils/AExecutable.h>
 #include <atomic>
@@ -29,14 +30,21 @@
 #include "../structs/Network.h"
 #endif
 
+#define MTU_SIZE (64)
+#define MAX_NUM_MSG 1
+#define BUFSIZE 65000
+
 namespace na62 {
 class NetworkHandler: public AExecutable {
 public:
-	NetworkHandler(std::string deviceName);
+	NetworkHandler(std::string deviceName, int l0, int l1, int mp);
 	virtual ~NetworkHandler();
 
 	static int GetNextFrame(struct pfring_pkthdr *hdr, char** pkt,
 			u_int pkt_len, uint_fast8_t wait_for_incoming_packet, uint queueNumber);
+
+
+	static int GetNextFrame(char ** pkt, in_port_t &srcport, in_addr_t &srcaddr, uint_fast8_t wait_for_incoming_packet, uint queueNumber);
 
 	static std::string GetDeviceName();
 
@@ -91,11 +99,32 @@ public:
 	static uint getNumberOfEnqueuedSendFrames() {
 		return asyncSendData_.size();
 	}
+	static int net_bind_udp(std::string deviceName);
+
+	static int net_bind_udpl1(std::string deviceName);
+
+	static void net_set_buffer_size(int cd, int max, int send);
+
+	inline void handle_send(const boost::system::error_code& /*error*/,
+			      uint_fast16_t /*bytes_transferred*/){
+			  }
 
 private:
 	static std::vector<char> myMac_;
 	static uint_fast32_t myIP_;
-
+	static uint_fast16_t l0_Port_;
+	static uint_fast16_t l1_Port_;
+	static uint_fast16_t m_Port_;
+	static int socket_;
+	static int socketl1_;
+	static ssize_t result_;
+	static ssize_t resultl1_;
+	static char buffer_[BUFSIZE];
+	static char bufferl1_[BUFSIZE];
+	static struct sockaddr_in senderAddr_;
+	static struct sockaddr_in senderAddrl1_;
+	static socklen_t senderLen_;
+	static socklen_t senderLenl1_;
 	static std::atomic<uint64_t> bytesReceived_;
 	static std::atomic<uint64_t> framesReceived_;
 	static std::atomic<uint64_t> framesSent_;
@@ -103,6 +132,8 @@ private:
 	static std::string deviceName_;
 
 	static tbb::concurrent_bounded_queue<DataContainer> asyncSendData_;
+
+	//static int socket_;
 
 	/*
 	 * The thread will send gratuitous arp requests

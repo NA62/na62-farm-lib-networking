@@ -25,4 +25,10 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
+	<variableList>
+		<variable>
+			<name>FARM_LOC</name>
+			<value>file:/home/jcalvopi/Desktop/na62/na62/Docks/na62-farm/root/workspace/na62-farm</value>
+		</variable>
+	</variableList>
 </projectDescription>

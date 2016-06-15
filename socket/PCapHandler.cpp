@@ -5,7 +5,7 @@
  *      Author: Jonas Kunze (kunze.jonas@gmail.com)
  */
 
-#ifndef USE_PFRING
+#ifdef USE_PFRING
 #include "NetworkHandler.h"
 
 #include <asm-generic/socket.h>
@@ -43,11 +43,11 @@ namespace na62 {
 
 	static char* recvBuffer_ = new char[BUF_SIZE];
 
-	NetworkHandler::NetworkHandler(std::string deviceName) {
+NetworkHandler::NetworkHandler(std::string deviceName) {
 		myIP_ = EthernetUtils::GetIPOfInterface(deviceName);
 		myMac_ = std::move(EthernetUtils::GetMacOfInterface(deviceName));
 
-#define ETHER_TYPE	0x0800
+		#define ETHER_TYPE	0x0800
 		int sockopt;
 		struct ifreq ifopts; /* set promiscuous mode */
 		struct ifreq if_ip; /* get ip addr */

@@ -96,8 +96,10 @@ public:
 		 * We must allocate at least 64 Bytes because of ethernet padding!
 		 */
 		char * data = new char[64];
+		in_port_t portUdp = 0;
+		in_addr_t addrUdp = 0;
 
-		DataContainer container = { data, sizeof(struct ARP_HDR), true };
+		DataContainer container = { data, sizeof(struct ARP_HDR), true, portUdp, addrUdp };
 
 		struct ARP_HDR* hdr = (struct ARP_HDR*) data;
 
