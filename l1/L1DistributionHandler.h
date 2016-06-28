@@ -64,7 +64,7 @@ private:
 	 */
 	static tbb::concurrent_queue<TRIGGER_RAW_HDR*> multicastMRPQueue;
 
-	static std::vector<MRP_FRAME_HDR*> L1_MulticastRequestHdrs;
+	static std::vector<MRP_RAW_HDR*> L1_MulticastRequestHdrs;
 	static MRP_FRAME_HDR* L1_UnicastRequestHdr;
 
 	static uint64_t L1TriggersSent;

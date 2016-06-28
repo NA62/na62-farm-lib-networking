@@ -36,12 +36,13 @@ tbb::concurrent_queue<TRIGGER_RAW_HDR*> L1DistributionHandler::multicastMRPQueue
 
 //ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* L1DistributionHandler::unicastMRPWithIPsQueues;
 
-std::vector<MRP_FRAME_HDR*> L1DistributionHandler::L1_MulticastRequestHdrs;
+std::vector<MRP_RAW_HDR*> L1DistributionHandler::L1_MulticastRequestHdrs;
 MRP_FRAME_HDR* L1DistributionHandler::L1_UnicastRequestHdr;
 
 in_port_t sport;
 in_addr_t saddr;
-uint_fast32_t multiIP[100];
+std::vector<uint_fast32_t> multiIP;
+//uint_fast32_t multiIP[100];
 
 uint64_t L1DistributionHandler::L1TriggersSent = 0;
 uint64_t L1DistributionHandler::L1MRPsSent = 0;
@@ -50,7 +51,7 @@ uint L1DistributionHandler::MIN_USEC_BETWEEN_L1_REQUESTS = 0;
 
 l1::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event, bool zSuppressed) {
 	TRIGGER_RAW_HDR* triggerHDR = new TRIGGER_RAW_HDR();
-#ifdef __USE_BIG_ENDIAN_FOR_MRP
+#ifndef USE_SIMU
 	triggerHDR->timestamp = htonl(event->getTimestamp());
 	triggerHDR->fineTime = event->getFinetime();
 	triggerHDR->requestZeroSuppressed = zSuppressed;
@@ -62,6 +63,7 @@ l1::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event, bool zSuppressed) {
 	triggerHDR->requestZeroSuppressed = zSuppressed;
 	triggerHDR->triggerTypeWord = event->getTriggerTypeWord();
 	triggerHDR->eventNumber = event->getEventNumber();
+
 #endif
 	return triggerHDR;
 }
@@ -84,13 +86,7 @@ bool zSuppressed) {
 void L1DistributionHandler::Async_RequestL1DataUnicast(const Event *event,
 bool zSuppressed, const std::vector<uint_fast16_t> subSourceIDIs) {
 	LOG_INFO("Unicast data request not implemented!");
-//	 cream::TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event,
-//			zSuppressed);
-//	auto pair = std::make_pair(triggerHDR, crateCREAMIDs);
-//	while (!unicastMRPWithIPsQueues[threadNum].push(pair)) {
-//		LOG_ERROR("L1DistributionHandler input queue overrun!");
-//		usleep(1000);
-//	}
+
 }
 
 void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetweenL1Requests,
@@ -98,39 +94,19 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetwe
 		uint destinationPort) {
 
 	sport = destinationPort;
-	int i = 0;
+
 
 	MAX_TRIGGERS_PER_L1MRP = maxTriggersPerMRP;
 	MIN_USEC_BETWEEN_L1_REQUESTS = minUsecBetweenL1Requests;
 
 	for (std::string multicastIP : multicastGroupNames) {
-		MRP_FRAME_HDR* hdr = new MRP_FRAME_HDR();
-		L1_MulticastRequestHdrs.push_back(hdr);
 
-		const uint_fast32_t multicastGroup = inet_addr(multicastIP.data());
-		//saddr = multicastGroup;
-		multiIP[i] = multicastGroup;
-		++i;
-		EthernetUtils::GenerateUDP((char*) hdr,
-				EthernetUtils::GenerateMulticastMac(multicastGroup),
-				multicastGroup, sourcePort, destinationPort);
+		multiIP.push_back(inet_addr(multicastIP.data()));
 
-		hdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
-		hdr->MRP_HDR.reserved = 0;
+
 	}
 
-	L1_UnicastRequestHdr = new MRP_FRAME_HDR();
-	/*
-	 * TODO: The router MAC has to be set here:
-	 */
-	EthernetUtils::GenerateUDP((char*) L1_UnicastRequestHdr,
-			EthernetUtils::StringToMAC("00:11:22:33:44:55"),
-			0/*Will be set later*/, sourcePort, destinationPort);
 
-	L1_UnicastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
-	L1_UnicastRequestHdr->MRP_HDR.reserved = 0;
-
-//	EthernetUtils::GenerateUDP(CREAM_RequestBuff, EthernetUtils::StringToMAC("00:15:17:b2:26:fa"), "10.0.4.3", sPort, dPort);
 }
 
 void L1DistributionHandler::thread() {
@@ -191,7 +167,7 @@ void L1DistributionHandler::thread() {
  */
 void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& triggers) {
 
-	uint_fast16_t offset = sizeof(MRP_FRAME_HDR);
+	uint_fast16_t offset = sizeof(MRP_RAW_HDR);
 
 	const uint sizeOfMRP = offset + sizeof(TRIGGER_RAW_HDR)
 					* (triggers.size() > MAX_TRIGGERS_PER_L1MRP ? MAX_TRIGGERS_PER_L1MRP : triggers.size());
@@ -205,6 +181,7 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 	uint numberOfTriggers = 0;
 	while (triggers.size() != 0 && numberOfTriggers != MAX_TRIGGERS_PER_L1MRP) {
 		TRIGGER_RAW_HDR* trigger = triggers.back();
+		//LOG_INFO("event***************************************************************************: " << trigger->eventNumber);
 		triggers.pop_back();
 
 		memcpy(reinterpret_cast<char*>(buff) + offset, trigger, sizeof(TRIGGER_RAW_HDR));
@@ -214,27 +191,29 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 		numberOfTriggers++;
 	}
 	int i = 0;
-	for (auto dataHDR : L1_MulticastRequestHdrs) {
+	for (auto dst : multiIP) {
 		char* frame = new char[offset];
-
+		MRP_RAW_HDR* dataHDR = new MRP_RAW_HDR;
 		memcpy(frame, buff, offset);
-		memcpy(frame, reinterpret_cast<const char*>(dataHDR),
-				sizeof(MRP_FRAME_HDR));
+		memcpy(frame, reinterpret_cast<const char*>(dataHDR), sizeof(MRP_RAW_HDR));
 
-		MRP_FRAME_HDR* dataHDRToBeSent = (MRP_FRAME_HDR*) frame;
+
+
+		MRP_RAW_HDR* dataHDRToBeSent = (MRP_RAW_HDR*) frame;
 		dataHDRToBeSent->SetNumberOfTriggers(numberOfTriggers);
+		//LOG_INFO("trigger***************************************************************************: " << numberOfTriggers);
 
-		//dataHDRToBeSent->udp.ip.check = 0;
-		//dataHDRToBeSent->udp.ip.check = EthernetUtils::GenerateChecksum((const char*) (&dataHDRToBeSent->udp.ip), sizeof(iphdr));
-		//dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 
-		saddr = multiIP[i];
-		NetworkHandler::AsyncSendFrame( { frame, offset, true, sport, saddr });
-		++i;
+		NetworkHandler::AsyncSendFrame( { frame, offset, true, sport, (in_addr_t)dst });
+
 		// Don't put too many packets in the queue at the same time
 		boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS));
+		delete[] frame;
+		delete[] dataHDR;
 	}
 	delete[] buff;
+
+
 
 	L1TriggersSent += numberOfTriggers;
 	L1MRPsSent++;

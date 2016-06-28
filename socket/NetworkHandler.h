@@ -40,12 +40,13 @@ public:
 	NetworkHandler(std::string deviceName, int l0, int l1, int mp);
 	virtual ~NetworkHandler();
 
-	static int GetNextFrame(struct pfring_pkthdr *hdr, char** pkt,
-			u_int pkt_len, uint_fast8_t wait_for_incoming_packet, uint queueNumber);
+#ifdef USE_UDP
+	static int GetNextFrame(char ** pkt, in_port_t &srcport, in_addr_t &srcaddr, uint_fast8_t wait_for_incoming_packet, uint queueNumber, int sd);
 
-
-	static int GetNextFrame(char ** pkt, in_port_t &srcport, in_addr_t &srcaddr, uint_fast8_t wait_for_incoming_packet, uint queueNumber);
-
+	static int GetNextFrameL1(char ** pktl1, in_port_t &srcportl1, in_addr_t &srcaddrl1, uint_fast8_t wait_for_incoming_packetl1, uint queueNumberl1, int sdl1);
+#else
+	static int GetNextFrame(struct pfring_pkthdr *hdr, char** pkt, u_int pkt_len, uint_fast8_t wait_for_incoming_packet, uint queueNumber);
+#endif
 	static std::string GetDeviceName();
 
 	/**
@@ -59,12 +60,16 @@ public:
 	 *
 	 * This should only be called by a PacketHandler thread to ensure thread safety.
 	 */
+#ifndef USE_UDP
 	static int DoSendQueuedFrames(uint_fast16_t threadNum);
 
 	static int SendFrameConcurrently(uint_fast16_t threadNum, const u_char *pkt,
 			u_int pktLen, bool flush = true, bool activePoll = true);
+#endif
 
-	static void PrintStats();
+	static void PrintStatsL0();
+	static void PrintStatsL1();
+
 
 	static uint_fast16_t GetNumberOfQueues();
 
@@ -83,14 +88,30 @@ public:
 	}
 
 	static inline uint64_t GetBytesReceived() {
+		return bytesReceived_ + bytesReceivedl1_;
+	}
+
+	static inline uint64_t GetBytesL0() {
 		return bytesReceived_;
 	}
 
+	static inline uint64_t GetBytesL1() {
+		return bytesReceivedl1_;
+	}
+
 	static inline uint64_t GetFramesReceived() {
+		return framesReceived_ + framesReceivedl1_;
+	}
+
+	static inline uint64_t GetFramesL0() {
 		return framesReceived_;
 	}
 
-	static inline uint64_t GetFramesSent() {
+	static inline uint64_t GetFramesL1() {
+		return framesReceivedl1_;
+	}
+
+	static inline uint64_t GetFramesRequestSent() {
 		return framesSent_;
 	}
 
@@ -99,11 +120,10 @@ public:
 	static uint getNumberOfEnqueuedSendFrames() {
 		return asyncSendData_.size();
 	}
-	static int net_bind_udp(std::string deviceName);
+	static int net_bind_udp();
 
-	static int net_bind_udpl1(std::string deviceName);
+	static int net_bind_udpl1();
 
-	static void net_set_buffer_size(int cd, int max, int send);
 
 	inline void handle_send(const boost::system::error_code& /*error*/,
 			      uint_fast16_t /*bytes_transferred*/){
@@ -127,6 +147,8 @@ private:
 	static socklen_t senderLenl1_;
 	static std::atomic<uint64_t> bytesReceived_;
 	static std::atomic<uint64_t> framesReceived_;
+	static std::atomic<uint64_t> bytesReceivedl1_;
+	static std::atomic<uint64_t> framesReceivedl1_;
 	static std::atomic<uint64_t> framesSent_;
 	static uint_fast16_t numberOfQueues_;
 	static std::string deviceName_;

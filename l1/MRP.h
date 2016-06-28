@@ -17,29 +17,16 @@
 
 #define __USE_PFRING_FOR_MRP
 //#define __USE_BIG_ENDIAN_FOR_MRP
-
+//#define USE_SIMU
 namespace na62 {
 namespace l1 {
 
-#ifdef __USE_BIG_ENDIAN_FOR_MRP
+//#ifdef __USE_BIG_ENDIAN_FOR_MRP
+
+#ifndef USE_SIMU
 /**
  * Defines the structure of a L1 trigger element as defined in table 4 in NA62-11-02.
  */
-struct L1EVENT_TO_PC_HDR{
-	uint8_t sourceID;
-
-	uint32_t eventNumber :24;
-	uint16_t reserved; // lowest bit 1 to request zero suppressed data
-	uint16_t eventLength;
-	uint32_t timeStamp;
-	uint8_t errorBits;
-	uint8_t l0TriggerWord;
-	uint16_t sourceSubID;
-}__attribute__ ((__packed__));
-
-
-
-
 struct TRIGGER_RAW_HDR {
 	uint32_t timestamp;
 

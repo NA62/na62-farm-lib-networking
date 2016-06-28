@@ -125,13 +125,15 @@ public:
 
 	static inline uint16_t GenerateChecksum(const char* data, int len,
 			uint sum = 0) {
-		return DataContainer::GenerateChecksum(data, len, sum);
+		return 0;
+		//return DataContainer::GenerateChecksum(data, len, sum);
 	}
 
 	static inline uint16_t GenerateUDPChecksum(struct UDP_HDR* hdr,
 			uint32_t payloadLength) {
 		hdr->udp.check = 0;
-		return DataContainer::Wrapsum(
+		return 0;
+	/*	return DataContainer::Wrapsum(
 				DataContainer::GenerateChecksumUnwrapped(
 						(const char *) &hdr->udp,
 						sizeof(udphdr), // The UDP header
@@ -143,23 +145,23 @@ public:
 										IPPROTO_UDP
 												+ (u_int32_t) ntohs(
 														hdr->udp.len))))); // the pseudo header (0x00+udp-len+sadd+daddr)
-	}
+	*/}
 
 	static inline bool CheckUDP(struct UDP_HDR* hdr, const char* udpPayload,
 			uint32_t length) {
-		return 0xFFFF
-				== DataContainer::GenerateChecksumUnwrapped(
+			return 0;
+				/*== DataContainer::GenerateChecksumUnwrapped(
 						(const char *) &hdr->udp,
 						sizeof(udphdr), // The UDP header
 						DataContainer::GenerateChecksumUnwrapped(udpPayload,
 								length, // The UDP payload
 								DataContainer::GenerateChecksumUnwrapped(
 										(const char *) &hdr->ip.saddr,
-										8/*source and dest. address: 4 byte each*/,
+										8/*source and dest. address: 4 byte each,
 										IPPROTO_UDP
 												+ (u_int32_t) ntohs(
 														hdr->udp.len)))); // the pseudo header (0x00+udp-len+sadd+daddr)
-	}
+	*/}
 
 	static inline bool CheckData(char* data, uint16_t len) {
 		uint sum = 0;
