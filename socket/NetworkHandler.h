@@ -41,9 +41,9 @@ public:
 	virtual ~NetworkHandler();
 
 #ifdef USE_UDP
-	static int GetNextFrame(char ** pkt, in_port_t &srcport, in_addr_t &srcaddr, uint_fast8_t wait_for_incoming_packet, uint queueNumber, int sd);
+	static int GetNextFrame(char **pkt, in_port_t &srcport, in_addr_t &srcaddr, uint_fast8_t wait_for_incoming_packet, uint queueNumber, int sd, bool &time);
 
-	static int GetNextFrameL1(char ** pktl1, in_port_t &srcportl1, in_addr_t &srcaddrl1, uint_fast8_t wait_for_incoming_packetl1, uint queueNumberl1, int sdl1);
+	static int GetNextFrameL1(char **pktl1, in_port_t &srcportl1, in_addr_t &srcaddrl1, uint_fast8_t wait_for_incoming_packetl1, uint queueNumberl1, int sdl1, bool &timel1);
 #else
 	static int GetNextFrame(struct pfring_pkthdr *hdr, char** pkt, u_int pkt_len, uint_fast8_t wait_for_incoming_packet, uint queueNumber);
 #endif

@@ -34,7 +34,7 @@ namespace na62 {
 namespace l1 {
 tbb::concurrent_queue<TRIGGER_RAW_HDR*> L1DistributionHandler::multicastMRPQueue;
 
-//ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* L1DistributionHandler::unicastMRPWithIPsQueues;
+///ThreadsafeQueue<unicastTriggerAndCrateCREAMIDs_type>* L1DistributionHandler::unicastMRPWithIPsQueues;
 
 std::vector<MRP_RAW_HDR*> L1DistributionHandler::L1_MulticastRequestHdrs;
 MRP_FRAME_HDR* L1DistributionHandler::L1_UnicastRequestHdr;
@@ -181,7 +181,7 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 	uint numberOfTriggers = 0;
 	while (triggers.size() != 0 && numberOfTriggers != MAX_TRIGGERS_PER_L1MRP) {
 		TRIGGER_RAW_HDR* trigger = triggers.back();
-		//LOG_INFO("event***************************************************************************: " << trigger->eventNumber);
+
 		triggers.pop_back();
 
 		memcpy(reinterpret_cast<char*>(buff) + offset, trigger, sizeof(TRIGGER_RAW_HDR));
