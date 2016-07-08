@@ -29,7 +29,7 @@ std::mutex ZMQHandler::connectMutex_;
 std::map<zmq::socket_t*, std::string> ZMQHandler::allSockets_;
 
 void ZMQHandler::Initialize(const int numberOfIOThreads) {
-	context_ = new zmq::context_t(numberOfIOThreads);
+	context_ = new zmq::context_t(numberOfIOThreads); // can throw!
 }
 void ZMQHandler::Stop() {
 	running_ = false;
@@ -42,10 +42,10 @@ void ZMQHandler::shutdown() {
 zmq::socket_t* ZMQHandler::GenerateSocket(std::string name, int socketType,
 		int highWaterMark) {
 	int linger = 0;
-	zmq::socket_t* socket = new zmq::socket_t(*context_, socketType);
-	socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+	zmq::socket_t* socket = new zmq::socket_t(*context_, socketType); // can throw!
+	socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger)); // can throw!
 
-	socket->setsockopt(ZMQ_SNDHWM, &highWaterMark, sizeof(highWaterMark));
+	socket->setsockopt(ZMQ_SNDHWM, &highWaterMark, sizeof(highWaterMark)); // can throw!
 
 	numberOfActiveSockets_++;
 	allSockets_[socket] = name;
@@ -66,8 +66,8 @@ void ZMQHandler::DestroySocket(zmq::socket_t* socket) {
 	socket->close();
 	delete socket;
 	numberOfActiveSockets_--;
-	LOG_INFO << "Closed ZMQ socket (" << numberOfActiveSockets_
-			<< " remaining: " << missingSockets << ")" << ENDL;
+	LOG_INFO("Closed ZMQ socket (" << numberOfActiveSockets_
+			<< " remaining: " << missingSockets << ")");
 }
 
 std::string ZMQHandler::GetEBL0Address(int threadNum) {
@@ -93,7 +93,7 @@ void ZMQHandler::ConnectInproc(zmq::socket_t* socket, std::string address) {
 	connectMutex_.lock();
 	while (boundAddresses_.find(address) == boundAddresses_.end()) {
 		connectMutex_.unlock();
-		LOG_INFO << "ZMQ not yet bound: " << address << ENDL;
+		LOG_INFO("ZMQ not yet bound: " << address);
 		boost::this_thread::sleep(boost::posix_time::microsec(500000));
 		connectMutex_.lock();
 	}
@@ -109,8 +109,7 @@ void ZMQHandler::sendMessage(zmq::socket_t* socket, zmq::message_t&& msg,
 			break;
 		} catch (const zmq::error_t& ex) {
 			if (ex.num() != EINTR) { // try again if EINTR (signal caught)
-				LOG_ERROR << ex.what() << ENDL;
-
+				LOG_ERROR("Failed to send message over ZMQ because " << ex.what());
 				ZMQHandler::DestroySocket(socket);
 				return;
 			}

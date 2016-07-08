@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include "options/Logging.h"
 
 #include "exceptions/NA62Error.h"
 
@@ -25,14 +26,8 @@ DimListener::DimListener() :
 		nextBurstNumber_("RunControl/NextBurstNumber", -1, this), burstNumber_(
 				"RunControl/BurstNumber", -1, this), runNumber_(
 				"RunControl/RunNumber", -1, this), SOB_TS_("NA62/Timing/SOB", 0,
-				this), EOB_TS_("NA62/Timing/EOB", 0, this), runningMerger_(
-				"RunControl/RunningMergers", (char*) "", this), thread(nullptr) {
-
-//	int runNumber = 0;
-//	if (runNumber_.getSize() <= 0) {
-//		throw NA62Error(
-//				"Unable to connect to RunNumber service! Refusing to start.");
-//	}
+				this), EOB_TS_("NA62/Timing/EOB", 0, this),
+				burstTimeInfo_("RunControl/BurstTimeStruct", nullptr, 0, this), thread(nullptr) {
 }
 
 DimListener::~DimListener() {
@@ -56,16 +51,6 @@ uint DimListener::getBurstNumber() {
 
 uint DimListener::getNextBurstNumber() {
 	return nextBurstNumber_.getInt();
-}
-
-std::string DimListener::getRunningMergers() {
-	if (runningMerger_.getSize() != 0) {
-		std::string runningMergerList((char*) runningMerger_.getData(),
-				runningMerger_.getSize() - 1);
-		boost::trim(runningMergerList); // trim the string to remove any outer whitespace
-		return runningMergerList;
-	}
-	return "";
 }
 
 void DimListener::infoHandler() {
@@ -95,13 +80,22 @@ void DimListener::infoHandler() {
 		for (auto callback : nextBurstNumberCallbacks) {
 			callback(burstID);
 		}
-	} else if (curr == &runningMerger_) {
-		if (runningMerger_.getSize() != 0) {
-			std::string runningMergerList((char*) runningMerger_.getData(),
-					runningMerger_.getSize() - 1);
-			boost::trim(runningMergerList); // trim the string to remove any outer whitespace
-			for (auto callback : runningMergerCallbacks) {
-				callback(runningMergerList);
+	} else if (curr == &burstTimeInfo_) {
+		//LOG_INFO("Received burst time info update");
+		if (burstTimeInfo_.getSize() != 0) {
+			BurstTimeInfo bti;
+			int32_t* rawbti = (int32_t*) burstTimeInfo_.getData();
+			bti.burstID = rawbti[0];
+			bti.sobTime = rawbti[1];
+			bti.eobTime = rawbti[2];
+			bti.runNumber = rawbti[3];
+			LOG_INFO ("Received burst time info update: " << bti.burstID << " " << bti.sobTime
+					<< " " <<bti.eobTime << " " << bti.runNumber);
+
+			if (bti.eobTime != 0 && bti.runNumber != 0) {
+				for (auto callback : burstTimeInfoCallbacks) {
+					callback(bti);
+				}
 			}
 		}
 	}
