@@ -44,6 +44,7 @@ uint L1DistributionHandler::MAX_TRIGGERS_PER_L1MRP = 0;
 uint L1DistributionHandler::MIN_USEC_BETWEEN_L1_REQUESTS = 0;
 
 l1::TRIGGER_RAW_HDR* generateTriggerHDR(const Event * event, bool zSuppressed) {
+
 	TRIGGER_RAW_HDR* triggerHDR = new TRIGGER_RAW_HDR();
 #ifdef __USE_BIG_ENDIAN_FOR_MRP
 	triggerHDR->timestamp = htonl(event->getTimestamp());
@@ -69,6 +70,9 @@ bool zSuppressed) {
 		return;
 	}
 	TRIGGER_RAW_HDR* triggerHDR = generateTriggerHDR(event, zSuppressed);
+
+	//LOG_ERROR("Generated trigger header. Summary:");
+	//LOG_ERROR("Event id: "<< event->getEventNumber() << " htonl: " << triggerHDR->eventNumber);
 
 	/*
 	 * FIXME: The blocking here is quite bad as this method is called for every accepted event
@@ -104,6 +108,15 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetwe
 				EthernetUtils::GenerateMulticastMac(multicastGroup),
 				multicastGroup, sourcePort, destinationPort);
 
+//Adding my own ip instead of the multicast one
+//		char * dest_add = new char[ETH_ALEN];
+//		memcpy(dest_add, NetworkHandler::GetMyMac().data(), ETH_ALEN);
+//
+//		EthernetUtils::GenerateUDP((char*) hdr,
+//				dest_add,
+//				multicastGroup, sourcePort, destinationPort);
+
+
 		hdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 		hdr->MRP_HDR.reserved = 0;
 	}
@@ -115,6 +128,13 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetwe
 	EthernetUtils::GenerateUDP((char*) L1_UnicastRequestHdr,
 			EthernetUtils::StringToMAC("00:11:22:33:44:55"),
 			0/*Will be set later*/, sourcePort, destinationPort);
+			
+//Add my own mac address
+//	EthernetUtils::GenerateUDP((char*) L1_UnicastRequestHdr,
+//			EthernetUtils::StringToMAC("64:00:6a:6b:13:1d"),
+//			0/*Will be set later*/, sourcePort, destinationPort);
+
+
 
 	L1_UnicastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 	L1_UnicastRequestHdr->MRP_HDR.reserved = 0;
@@ -178,6 +198,59 @@ void L1DistributionHandler::thread() {
  */
 void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& triggers) {
 
+
+	//Sending data to my host with another socket (unicast)
+	struct sockaddr_in si_other;
+	int sr, slen=sizeof(si_other);
+
+
+	if ((sr=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+		LOG_ERROR("socket");
+	}
+
+	memset((char *) &si_other, 0, sizeof(si_other));
+	si_other.sin_family = AF_INET;
+	si_other.sin_port = htons(58914);
+	if (inet_aton("137.138.104.154", &si_other.sin_addr)==0) {
+		fprintf(stderr, "inet_aton() failed\n");
+	}
+
+	uint numberOfTriggers = 0;
+	while (triggers.size() != 0 && numberOfTriggers != MAX_TRIGGERS_PER_L1MRP) {
+		TRIGGER_RAW_HDR* trigger = triggers.back();
+		triggers.pop_back();
+
+		int signlebuff_len = sizeof(MRP_RAW_HDR) + sizeof(TRIGGER_RAW_HDR);
+		char* singlebuff = new char[signlebuff_len];
+
+		//TODO set ip address
+		uint16_t triggerNum = 1;
+
+		((MRP_RAW_HDR*) singlebuff)->SetNumberOfTriggers(triggerNum);
+		((MRP_RAW_HDR*) singlebuff)->ipAddress = NetworkHandler::GetMyIP();
+
+		memcpy(singlebuff + sizeof(MRP_RAW_HDR), trigger, sizeof(TRIGGER_RAW_HDR));
+
+		//delete trigger;
+
+		//LOG_ERROR("Sending packet N MRP: " << ((MRP_RAW_HDR*) singlebuff)->numberOfTriggers << "("<<ntohs(((MRP_RAW_HDR*) singlebuff)->numberOfTriggers)<< ") event number: "<<trigger->eventNumber <<" with special socket!!");
+		//sprintf(buf, "This is packet %d\n", i);
+		if (sendto(sr, singlebuff, signlebuff_len, 0, (const sockaddr *) &si_other, slen) == -1) {
+			LOG_ERROR("sendto()");
+		}
+		delete[] singlebuff;
+		numberOfTriggers++;
+
+	}
+	close(sr);
+
+
+
+
+	
+	return ;
+	//Real start
+		
 	uint_fast16_t offset = sizeof(MRP_FRAME_HDR);
 
 	const uint sizeOfMRP = offset + sizeof(TRIGGER_RAW_HDR)
@@ -188,7 +261,8 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 	 */
 	char* buff = new char[sizeOfMRP];
 
-	uint numberOfTriggers = 0;
+
+	numberOfTriggers = 0;
 	while (triggers.size() != 0 && numberOfTriggers != MAX_TRIGGERS_PER_L1MRP) {
 		TRIGGER_RAW_HDR* trigger = triggers.back();
 		triggers.pop_back();
