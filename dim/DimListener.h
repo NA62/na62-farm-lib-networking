@@ -8,8 +8,8 @@
 #ifndef DIMLISTENER_H_
 #define DIMLISTENER_H_
 
-#include <dim/dis.hxx>
-#include <dim/dic.hxx>
+#include <dis.hxx>
+#include <dic.hxx>
 #include <sys/types.h>
 #include <algorithm>
 #include <vector>
