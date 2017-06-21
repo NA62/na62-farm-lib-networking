@@ -47,9 +47,12 @@ public:
 
 	static void Initialize(uint maxTriggersPerMRP,
 			uint minUsecBetweenL1Requests,
-			std::vector<std::string> multicastGroupNames, uint sourcePort,
-			uint destinationPort);
-
+			std::vector<std::string> multicastGroupNames,
+			//std::vector<std::string> unicastNames,
+			uint sourcePort,
+			uint destinationPort,
+			std::string gatewayMAC);
+	//void pingThread();
 private:
 	void thread();
 
@@ -65,6 +68,7 @@ private:
 	static tbb::concurrent_queue<TRIGGER_RAW_HDR*> multicastMRPQueue;
 
 	static std::vector<MRP_FRAME_HDR*> L1_MulticastRequestHdrs;
+	static std::vector<MRP_FRAME_HDR*> L1_UnicastRequestHdrs;
 	static MRP_FRAME_HDR* L1_UnicastRequestHdr;
 
 	static uint64_t L1TriggersSent;

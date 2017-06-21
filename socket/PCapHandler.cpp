@@ -47,6 +47,7 @@ namespace na62 {
 		myIP_ = EthernetUtils::GetIPOfInterface(deviceName);
 		myMac_ = std::move(EthernetUtils::GetMacOfInterface(deviceName));
 
+
 #define ETHER_TYPE	0x0800
 		int sockopt;
 		struct ifreq ifopts; /* set promiscuous mode */

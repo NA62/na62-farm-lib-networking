@@ -92,6 +92,7 @@ public:
 		return asyncSendData_.size();
 	}
 
+
 private:
 	static std::vector<char> myMac_;
 	static uint_fast32_t myIP_;
