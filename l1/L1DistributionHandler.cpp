@@ -134,7 +134,7 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetwe
 	unicastDestinations.push_back(htonl(180489160));
 	unicastDestinations.push_back(htonl(180489161));
 
-	LOG_ERROR("We are going to send L1 requests to " << (int) unicastDestinations.size() << " endpoints.");
+	LOG_INFO("We are going to send L1 requests to " << (int) unicastDestinations.size() << " endpoints.");
 
 	for (auto unicastAddr : unicastDestinations) {
 		MRP_FRAME_HDR* hdr = new MRP_FRAME_HDR();
