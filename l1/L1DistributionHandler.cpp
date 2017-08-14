@@ -98,7 +98,7 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetwe
 	MIN_USEC_BETWEEN_L1_REQUESTS = minUsecBetweenL1Requests;
 
 
-	LOG_ERROR("Initialize L1DistributionHandler");
+	LOG_INFO("Initialize L1DistributionHandler");
 
 	for (std::string multicastIP : multicastGroupNames) {
 		MRP_FRAME_HDR* hdr = new MRP_FRAME_HDR();
