@@ -3,7 +3,6 @@
 	<name>na62-farm-lib-networking</name>
 	<comment></comment>
 	<projects>
-		<project>na62-farm-lib</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
