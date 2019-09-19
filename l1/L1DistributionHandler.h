@@ -38,7 +38,7 @@ public:
 			bool zSuppressed, const std::vector<uint_fast16_t> subSourceIDs);
 
 	static inline uint64_t GetL1TriggersSent() {
-		return L1DistributionHandler::L1TriggersSent;
+	return L1DistributionHandler::L1TriggersSent;
 	}
 
 	static inline uint64_t GetL1MRPsSent() {
@@ -48,7 +48,7 @@ public:
 	static void Initialize(uint maxTriggersPerMRP,
 			uint minUsecBetweenL1Requests,
 			std::vector<std::string> multicastGroupNames,
-			//std::vector<std::string> unicastNames,
+			std::vector<std::string> unicastAddress,
 			uint sourcePort,
 			uint destinationPort,
 			std::string gatewayMAC);

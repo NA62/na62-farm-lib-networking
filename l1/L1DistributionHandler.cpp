@@ -93,12 +93,11 @@ bool zSuppressed, const std::vector<uint_fast16_t> subSourceIDIs) {
 }
 
 void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetweenL1Requests,
-		std::vector<std::string> multicastGroupNames, uint sourcePort, uint destinationPort, std::string gatewayMAC) {
+		std::vector<std::string> multicastGroupNames, std::vector<std::string> unicastAddress, uint sourcePort, uint destinationPort, std::string gatewayMAC) {
+	LOG_INFO("Initialize L1DistributionHandler");
+
 	MAX_TRIGGERS_PER_L1MRP = maxTriggersPerMRP;
 	MIN_USEC_BETWEEN_L1_REQUESTS = minUsecBetweenL1Requests;
-
-
-	LOG_INFO("Initialize L1DistributionHandler");
 
 	for (std::string multicastIP : multicastGroupNames) {
 		MRP_FRAME_HDR* hdr = new MRP_FRAME_HDR();
@@ -114,36 +113,19 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetwe
 		hdr->MRP_HDR.reserved = 0;
 	}
 
-	std::vector<uint_fast32_t> unicastDestinations;
+	LOG_INFO("We are going to send L1 requests to " << (int) unicastAddress.size() << " endpoints.");
 
-	//FIXME: hard coded list of L1 LKR, GTK and MUV receivers
-	for (int i=0; i<31; ++i) {
-		if((i == 3) || (i == 28)) continue; // crates 3 and 28 don't exist
-		for (int j=3; j<21; ++j) {
-			if((j == 11) || (j == 12)) continue; //slots 11 and 12 don't exist
-			uint_fast32_t ipaddr = 180490250 + 32*i +j;
-			unicastDestinations.push_back(htonl(ipaddr));
-			//LOG_ERROR("Added " << std::hex << (int) ipaddr << std::dec << " to L1 request destinations");
-		}
-	}
-	// GTK now
-	unicastDestinations.push_back(htonl(180489156)); //ip 10.194.11.196
-	unicastDestinations.push_back(htonl(180489157));
-	unicastDestinations.push_back(htonl(180489158));
-	unicastDestinations.push_back(htonl(180489159));
-	unicastDestinations.push_back(htonl(180489160));
-	unicastDestinations.push_back(htonl(180489161));
+	for (auto unicastAddr: unicastAddress) {
+		struct sockaddr_in caddress;
+		inet_pton(AF_INET, unicastAddr.data(), &(caddress.sin_addr));
 
-	LOG_INFO("We are going to send L1 requests to " << (int) unicastDestinations.size() << " endpoints.");
-
-	for (auto unicastAddr : unicastDestinations) {
 		MRP_FRAME_HDR* hdr = new MRP_FRAME_HDR();
 		L1_UnicastRequestHdrs.push_back(hdr);
 
 		//const uint_fast32_t unicastAddr = inet_addr(unicastIP.data());
 
 		EthernetUtils::GenerateUDP((char*) hdr, EthernetUtils::StringToMAC(gatewayMAC),
-				unicastAddr, sourcePort, destinationPort);
+				caddress.sin_addr.s_addr, sourcePort, destinationPort);
 
 		hdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 		hdr->MRP_HDR.reserved = 0;
@@ -160,8 +142,6 @@ void L1DistributionHandler::Initialize(uint maxTriggersPerMRP, uint minUsecBetwe
 
 	L1_UnicastRequestHdr->MRP_HDR.ipAddress = NetworkHandler::GetMyIP();
 	L1_UnicastRequestHdr->MRP_HDR.reserved = 0;
-
-//	EthernetUtils::GenerateUDP(CREAM_RequestBuff, EthernetUtils::StringToMAC("00:15:17:b2:26:fa"), "10.0.4.3", sPort, dPort);
 }
 
 void L1DistributionHandler::thread() {
@@ -202,12 +182,15 @@ void L1DistributionHandler::thread() {
 			/*
 			 * Do not send if there's still a MRP in the queue and the current list is not full
 			 */
+			//std::cuNetworkHandler::getNumberOfEnqueuedSendFrames() != 0 && multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP
 			if (NetworkHandler::getNumberOfEnqueuedSendFrames() != 0 && multicastRequests.size() != MAX_TRIGGERS_PER_L1MRP) {
 				// sleep a bit and then fill up the multicastRequests list
 				boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS / 10));
-				continue;
+				std::cout << "Skipping.." << std::endl;
+				//continue;
 			}
 			//LOG_ERROR("Sending out data request");
+
 			Async_SendMRP(multicastRequests);
 
 		} else {
@@ -270,6 +253,7 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 		dataHDRToBeSent->udp.udp.check = EthernetUtils::GenerateUDPChecksum(
 				&dataHDRToBeSent->udp, dataHDRToBeSent->MRP_HDR.getSize());
 		//LOG_ERROR("Send to " << EthernetUtils::ipToString(dataHDRToBeSent->udp.ip.daddr));
+
 		NetworkHandler::AsyncSendFrame( { frame, offset, true });
 		// Don't put too many packets in the queue at the same time
 		boost::this_thread::sleep(boost::posix_time::microsec(MIN_USEC_BETWEEN_L1_REQUESTS/20));
@@ -299,6 +283,7 @@ void L1DistributionHandler::Async_SendMRP(std::vector<TRIGGER_RAW_HDR*>& trigger
 
 	L1TriggersSent += numberOfTriggers;
 	L1MRPsSent++;
+
 }
 } /* namespace cream */
 } /* namespace na62 */
